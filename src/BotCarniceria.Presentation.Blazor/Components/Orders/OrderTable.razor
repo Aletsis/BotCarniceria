@@ -1,0 +1,90 @@
+@using BotCarniceria.Core.Application.DTOs
+@using MudBlazor
+
+<MudTable T="PedidoDto" 
+          Items="@Items" 
+          Dense="true" 
+          Hover="true" 
+          Loading="@Loading" 
+          LoadingProgressColor="Color.Info"
+          Elevation="2"
+          Class="mt-4">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortBy="new Func<PedidoDto, object>(x => x.Folio)">Folio</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<PedidoDto, object>(x => x.ClienteNombre)">Cliente</MudTableSortLabel></MudTh>
+        <MudTh>Teléfono</MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<PedidoDto, object>(x => x.Estado)">Estado</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<PedidoDto, object>(x => x.Fecha)">Fecha</MudTableSortLabel></MudTh>
+        <MudTh>Forma de Pago</MudTh>
+        <MudTh>Acciones</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="pedido">
+        <MudTd DataLabel="Folio">
+            <MudText Typo="Typo.body2" Class="font-weight-bold">@pedido.Folio</MudText>
+        </MudTd>
+        <MudTd DataLabel="Cliente">@pedido.ClienteNombre</MudTd>
+        <MudTd DataLabel="Teléfono">@pedido.ClienteTelefono</MudTd>
+        <MudTd DataLabel="Estado">
+            <MudSelect T="string" 
+                       Value="@pedido.Estado" 
+                       ValueChanged="@((string newValue) => OnStatusChangedExternal(pedido, newValue))" 
+                       Dense="true"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="@("EnEspera")">En Espera</MudSelectItem>
+                <MudSelectItem Value="@("EnRuta")">En Ruta</MudSelectItem>
+                <MudSelectItem Value="@("Entregado")">Entregado</MudSelectItem>
+                <MudSelectItem Value="@("Cancelado")">Cancelado</MudSelectItem>
+            </MudSelect>
+        </MudTd>
+        <MudTd DataLabel="Fecha">
+            <MudText Typo="Typo.body2">@pedido.Fecha.ToString("dd/MM/yyyy")</MudText>
+            <MudText Typo="Typo.caption">@pedido.Fecha.ToString("HH:mm")</MudText>
+        </MudTd>
+        <MudTd DataLabel="Forma de Pago">
+            <MudChip T="string" Size="Size.Small" Color="Color.Info">@(pedido.FormaPago ?? "N/A")</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Acciones">
+            <MudTooltip Text="Ver detalles">
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                               Size="Size.Small" 
+                               Color="Color.Primary"
+                               OnClick="@(() => OnViewDetails.InvokeAsync(pedido))" 
+                               AriaLabel="Ver detalles del pedido" />
+            </MudTooltip>
+            <MudTooltip Text="Imprimir">
+                <MudIconButton Icon="@Icons.Material.Filled.Print" 
+                               Size="Size.Small" 
+                               Color="Color.Secondary"
+                               OnClick="@(() => OnPrint.InvokeAsync(pedido))" 
+                               AriaLabel="Imprimir comprobante" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+    </PagerContent>
+    <NoRecordsContent>
+        <MudText>No se encontraron pedidos con los filtros aplicados.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+<MudText Typo="Typo.body2" Class="mt-2 ml-2">
+    Mostrando @Items.Count() de @TotalItems pedidos
+</MudText>
+
+@code {
+    [Parameter] public IEnumerable<PedidoDto> Items { get; set; } = new List<PedidoDto>();
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public int TotalItems { get; set; }
+    
+    [Parameter] public EventCallback<PedidoDto> OnViewDetails { get; set; }
+    [Parameter] public EventCallback<PedidoDto> OnPrint { get; set; }
+    [Parameter] public EventCallback<Tuple<PedidoDto, string>> OnStatusChanged { get; set; }
+
+    private async Task OnStatusChangedExternal(PedidoDto pedido, string newValue)
+    {
+        await OnStatusChanged.InvokeAsync(new Tuple<PedidoDto, string>(pedido, newValue));
+    }
+}

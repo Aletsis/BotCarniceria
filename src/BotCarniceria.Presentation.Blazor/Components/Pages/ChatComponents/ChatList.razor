@@ -1,0 +1,57 @@
+@using BotCarniceria.Core.Application.DTOs
+@using MudBlazor
+
+<div class="d-flex flex-column h-100 border-e">
+    <div class="pa-2 border-b">
+        <MudTextField @bind-Value="_searchTerm" 
+                     Placeholder="Buscar..." 
+                     Label="Buscar Chats" 
+                     Adornment="Adornment.Start" 
+                     AdornmentIcon="@Icons.Material.Filled.Search" 
+                     AdornmentAriaLabel="Buscar" 
+                     Immediate="true" 
+                     Variant="Variant.Outlined" 
+                     Margin="Margin.Dense"/>
+    </div>
+    
+    <div class="flex-grow-1 overflow-auto">
+        <MudList T="string" SelectedValue="SelectedPhone" SelectionMode="SelectionMode.SingleSelection">
+             @foreach(var chat in FilteredChats)
+             {
+                 <MudListItem Value="@chat.NumeroTelefono" OnClick="@(() => HandleChatClick(chat))">
+                     <div class="d-flex flex-column">
+                         <div class="d-flex justify-space-between width-100">
+                             <MudText Typo="Typo.subtitle2" Style="font-weight: bold;">@chat.Nombre</MudText>
+                         </div>
+                         <div class="d-flex justify-space-between width-100">
+                              <MudText Typo="Typo.caption" Color="Color.Default">@chat.NumeroTelefono</MudText>
+                              <MudText Typo="Typo.caption" Color="Color.Secondary">@chat.LastActivity.ToString("g")</MudText>
+                         </div>
+                     </div>
+                 </MudListItem>
+                 <MudDivider />
+             }
+        </MudList>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<ChatSummaryDto> Chats { get; set; } = new();
+    [Parameter] public string? SelectedPhone { get; set; }
+    [Parameter] public EventCallback<ChatSummaryDto> OnChatSelected { get; set; }
+
+    private string _searchTerm = "";
+
+    private IEnumerable<ChatSummaryDto> FilteredChats => 
+        Chats.Where(c => string.IsNullOrEmpty(_searchTerm) || 
+                        c.Nombre.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        c.NumeroTelefono.Contains(_searchTerm));
+
+    private async Task HandleChatClick(ChatSummaryDto chat)
+    {
+        if (SelectedPhone != chat.NumeroTelefono)
+        {
+            await OnChatSelected.InvokeAsync(chat);
+        }
+    }
+}

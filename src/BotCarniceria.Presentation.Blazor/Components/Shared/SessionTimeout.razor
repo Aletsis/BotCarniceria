@@ -1,0 +1,99 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+@code {
+    [Parameter] public int TimeoutMinutes { get; set; } = 20;
+    [Parameter] public int WarningMinutes { get; set; } = 2;
+
+    private DotNetObjectReference<SessionTimeout>? _dotNetRef;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                _dotNetRef = DotNetObjectReference.Create(this);
+                // Call init only if authenticated
+                await InitSessionTimeout();
+            }
+        }
+    }
+
+    private async Task InitSessionTimeout()
+    {
+        var timeoutMs = TimeoutMinutes * 60 * 1000;
+        var warningMs = (TimeoutMinutes - WarningMinutes) * 60 * 1000;
+        
+        // Ensure warning is valid
+        if (warningMs <= 0) warningMs = 10000; // 10 seconds default if config bad
+
+        await JSRuntime.InvokeVoidAsync("sessionTimeout.initialize", _dotNetRef, warningMs, timeoutMs);
+        _initialized = true;
+    }
+
+    [JSInvokable]
+    public async Task ShowSessionWarning()
+    {
+        var options = new DialogOptions { 
+            BackdropClick = false, 
+            CloseOnEscapeKey = false, 
+            Position = DialogPosition.Center 
+        };
+
+        bool? result = await DialogService.ShowMessageBox(
+            "Sesión por expirar", 
+            $"Tu sesión expirará pronto por inactividad. ¿Deseas mantenerte conectado?", 
+            yesText: "Seguir conectado", 
+            cancelText: "Cerrar Sesión", // Use cancelText as 'Logout' option clearly
+             options: options);
+
+        // If result is true (Yes), keep alive. 
+        // If result is null (Cancel) or false (No), logout.
+        if (result == true)
+        {
+            await KeepAlive();
+            // Re-init logic is handled by KeepAlive resetting server. 
+            // Client side must explicitly restart timer.
+            await InitSessionTimeout();
+        }
+        else
+        {
+            Logout();
+        }
+    }
+
+    [JSInvokable]
+    public void Logout()
+    {
+        NavigationManager.NavigateTo("/account/logout", forceLoad: true);
+    }
+
+    private async Task KeepAlive()
+    {
+        try 
+        {
+            await JSRuntime.InvokeVoidAsync("fetch", "/account/ping");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"KeepAlive failed: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+        if (_initialized)
+        {
+             _ = JSRuntime.InvokeVoidAsync("sessionTimeout.dispose");
+        }
+    }
+}

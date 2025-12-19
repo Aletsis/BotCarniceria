@@ -1,0 +1,86 @@
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Domain.Enums
+@using MediatR
+@using MudBlazor
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="username" Label="Usuario" Required="true" ReadOnly="@(User != null)" />
+        <MudTextField @bind-Value="nombre" Label="Nombre Completo" Required="true" />
+        <MudTextField @bind-Value="telefono" Label="Teléfono" />
+        <MudSelect T="RolUsuario" Label="Rol" @bind-Value="rol" AnchorOrigin="Origin.BottomCenter">
+            @foreach (RolUsuario item in Enum.GetValues(typeof(RolUsuario)))
+            {
+                <MudSelectItem Value="@item">@item</MudSelectItem>
+            }
+        </MudSelect>
+        @if (User == null)
+        {
+            <MudTextField @bind-Value="password" Label="Contraseña" InputType="InputType.Password" Required="true" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public UsuarioDto? User { get; set; }
+
+    private string username;
+    private string nombre;
+    private string telefono;
+    private string password;
+    private RolUsuario rol = RolUsuario.Editor;
+
+    protected override void OnInitialized()
+    {
+        if (User != null)
+        {
+            username = User.NombreUsuario;
+            nombre = User.NombreCompleto;
+            telefono = User.Telefono; 
+            if (Enum.TryParse<RolUsuario>(User.Rol, out var r)) rol = r;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Submit()
+    {
+        if (User == null)
+        {
+            // Create
+            var result = await Mediator.Send(new CreateUsuarioCommand(username, password, nombre, rol, telefono));
+            if (result)
+            {
+                Snackbar.Add("Usuario creado", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                 Snackbar.Add("Error al crear usuario (quizás ya existe)", Severity.Error);
+            }
+        }
+        else
+        {
+            // Update
+            var result = await Mediator.Send(new UpdateUsuarioCommand(User.UsuarioID, nombre, rol, telefono));
+            if (result)
+            {
+                Snackbar.Add("Usuario actualizado", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+             else
+            {
+                 Snackbar.Add("Error al actualizar usuario", Severity.Error);
+            }
+        }
+    }
+}

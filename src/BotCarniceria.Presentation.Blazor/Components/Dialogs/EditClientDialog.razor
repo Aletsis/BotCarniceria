@@ -1,0 +1,75 @@
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Presentation.Blazor.Components.Clients
+@using MediatR
+@using MudBlazor
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <ClientForm Model="@_tempCliente" 
+                    IsEdit="@(Cliente.ClienteID > 0)" 
+                    IsLoading="@_saving"
+                    OnValidSubmit="Submit" 
+                    OnCancel="Cancel" />
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public ClienteDto Cliente { get; set; }
+
+    private ClienteDto _tempCliente;
+    private bool _saving;
+
+    protected override void OnInitialized()
+    {
+        // Create a copy to avoid mutating the original reference directly in the list
+        _tempCliente = new ClienteDto
+        {
+            ClienteID = Cliente.ClienteID,
+            Nombre = Cliente.Nombre,
+            NumeroTelefono = Cliente.NumeroTelefono,
+            Direccion = Cliente.Direccion,
+            Activo = Cliente.Activo,
+            // Copy other fields if necessary
+        };
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Submit()
+    {
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            var command = Cliente.ClienteID > 0
+                ? new UpdateClienteCommand(_tempCliente.ClienteID, _tempCliente.Nombre, _tempCliente.Direccion) as IRequest<bool>
+                : new UpdateClienteCommand(_tempCliente.ClienteID, _tempCliente.Nombre, _tempCliente.Direccion);
+                
+            var result = await Mediator.Send(new UpdateClienteCommand(_tempCliente.ClienteID, _tempCliente.Nombre, _tempCliente.Direccion));
+            
+            if (result)
+            {
+                Snackbar.Add("Cliente guardado", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error al guardar", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

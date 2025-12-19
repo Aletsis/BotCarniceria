@@ -1,0 +1,327 @@
+@page "/pedidos"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@attribute [Authorize(Roles = "admin,supervisor,editor")]
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Domain.Enums
+@using MediatR
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using BotCarniceria.Presentation.Blazor.Components.Orders
+
+<AuthorizeView Roles="admin,supervisor,editor">
+    <Authorized>
+        <PageTitle>Pedidos</PageTitle>
+
+        <MudText Typo="Typo.h4" GutterBottom="true">Gestión de Pedidos</MudText>
+
+        @if (_isEditor)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
+                Como Editor, solo puedes ver pedidos del día actual.
+            </MudAlert>
+        }
+
+        <!-- Filtros -->
+        <!-- Filtros -->
+        <OrderFilter @bind-SearchString="_searchString"
+                     @bind-FiltroEstado="_filtroEstado"
+                     @bind-FechaFiltro="_fechaFiltro"
+                     IsEditor="_isEditor"
+                     OnSearch="ApplyFilters" />
+
+        <!-- Tabla de Pedidos -->
+        <!-- Tabla de Pedidos -->
+        <OrderTable Items="@_pagedPedidos"
+                    Loading="@_loading"
+                    TotalItems="@_totalPedidos"
+                    OnViewDetails="VerDetalles"
+                    OnPrint="Imprimir"
+                    OnStatusChanged="@(args => CambiarEstado(args.Item1, args.Item2))" />
+
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">No tienes permisos para ver esta página.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+
+    private bool _loading = true;
+    private List<PedidoDto> _allPedidos = new();
+    private IEnumerable<PedidoDto> _pagedPedidos = new List<PedidoDto>();
+    private int _totalPedidos = 0;
+    
+    // Filtros
+    private string _searchString = "";
+    private string _filtroEstado = "Todos";
+    private DateTime? _fechaFiltro = null;
+    
+    // Roles
+    private bool _isEditor = false;
+    private bool _isAdmin = false;
+    private bool _isSupervisor = false;
+    
+    // SignalR
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Obtener rol del usuario
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        _isEditor = user.IsInRole("editor");
+        _isAdmin = user.IsInRole("admin");
+        _isSupervisor = user.IsInRole("supervisor");
+
+        // Si es editor, establecer fecha de hoy por defecto
+        if (_isEditor)
+        {
+            _fechaFiltro = DateTime.Today;
+        }
+
+        await LoadData();
+
+        // Configurar SignalR
+        await ConfigureSignalR();
+    }
+
+    private async Task ConfigureSignalR()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On("ActualizarPedidos", async () =>
+            {
+                await LoadData();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            hubConnection.On<string, string, DateTime>("OrderStatusChanged", async (folio, status, timestamp) =>
+            {
+                // Actualizar el pedido específico en la lista
+                var pedido = _allPedidos.FirstOrDefault(p => p.Folio == folio);
+                if (pedido != null)
+                {
+                    pedido.Estado = status;
+                    ApplyFiltersLocal();
+                    await InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't block the page
+            Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var query = new GetAllPedidosQuery();
+            _allPedidos = await Mediator.Send(query);
+
+            // Aplicar filtros
+            ApplyFiltersLocal();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar pedidos: {ex.Message}", Severity.Error);
+            _allPedidos = new List<PedidoDto>();
+            _pagedPedidos = new List<PedidoDto>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        ApplyFiltersLocal();
+        StateHasChanged();
+    }
+
+    private void ApplyFiltersLocal()
+    {
+        var filtered = _allPedidos.AsEnumerable();
+
+        // Filtro por rol: Editor solo ve pedidos del día
+        if (_isEditor)
+        {
+            filtered = filtered.Where(p => p.Fecha.Date == DateTime.Today);
+        }
+        // Admin y Supervisor pueden filtrar por fecha
+        else if (_fechaFiltro.HasValue)
+        {
+            filtered = filtered.Where(p => p.Fecha.Date == _fechaFiltro.Value.Date);
+        }
+
+        // Filtro por búsqueda
+        if (!string.IsNullOrWhiteSpace(_searchString))
+        {
+            var search = _searchString.ToLower();
+            filtered = filtered.Where(p =>
+                p.Folio.ToLower().Contains(search) ||
+                p.ClienteNombre.ToLower().Contains(search) ||
+                p.ClienteTelefono.Contains(search));
+        }
+
+        // Filtro por estado
+        if (_filtroEstado != "Todos")
+        {
+            filtered = filtered.Where(p => p.Estado == _filtroEstado);
+        }
+
+        // Ordenar por fecha descendente (más recientes primero)
+        filtered = filtered.OrderByDescending(p => p.Fecha);
+
+        _pagedPedidos = filtered;
+        _totalPedidos = filtered.Count();
+    }
+
+    private async Task CambiarEstado(PedidoDto pedido, string nuevoEstado)
+    {
+        try
+        {
+            // Confirmación 
+            bool? result = await DialogService.ShowMessageBox(
+                "Confirmar Cambio de Estado", 
+                $"¿Está seguro de cambiar el estado del pedido {pedido.Folio} de {GetEstadoDisplayName(pedido.Estado)} a {GetEstadoDisplayName(nuevoEstado)}?", 
+                yesText: "Sí", cancelText: "Cancelar");
+
+            if (result != true)
+            {
+                // Si cancela, asegúrate de que la UI refleje el estado original 
+                // (dependiendo de cómo se haya implementado OrderTable, puede que ya visualmente haya cambiado si es bind-two-way, 
+                // así que recargar podría ser necesario o revertir)
+                // En este caso, como lo llama un evento, la UI probablemente no cambió "bindeadamente" a menos que lo hiciera el componente hijo.
+                // Asumimos recargar para seguridad.
+                StateHasChanged(); // Forzar re-render si no cambió
+                return;
+            }
+
+            // Mapear string a enum
+            EstadoPedido estadoEnum;
+            if (!Enum.TryParse<EstadoPedido>(nuevoEstado, out estadoEnum))
+            {
+                Snackbar.Add("Estado inválido", Severity.Error);
+                return;
+            }
+
+            var command = new UpdatePedidoEstadoCommand
+            {
+                PedidoID = pedido.PedidoID,
+                NuevoEstado = nuevoEstado
+            };
+
+            var updateResult = await Mediator.Send(command);
+
+            if (updateResult)
+            {
+                pedido.Estado = nuevoEstado;
+                Snackbar.Add($"Estado del pedido {pedido.Folio} actualizado a: {GetEstadoDisplayName(nuevoEstado)}", Severity.Success);
+
+                // Notificar a otros clientes via SignalR
+                if (hubConnection?.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.SendAsync("NotifyOrderStatusChange", pedido.Folio, nuevoEstado);
+                    await hubConnection.SendAsync("NotifyActualizarPedidos");
+                }
+            }
+            else
+            {
+                Snackbar.Add("Error al actualizar el estado del pedido", Severity.Error);
+                // Recargar para obtener el estado correcto
+                await LoadData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            await LoadData();
+        }
+    }
+
+    private async Task VerDetalles(PedidoDto pedido)
+    {
+        var parameters = new DialogParameters 
+        { 
+            { "Pedido", pedido },
+            { "OnPrint", EventCallback.Factory.Create<PedidoDto>(this, Imprimir) }
+        };
+
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Medium, 
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        await DialogService.ShowAsync<PedidoDetailDialog>($"Detalle del Pedido - {pedido.Folio}", parameters, options);
+    }
+
+    private async Task Imprimir(PedidoDto pedido)
+    {
+        try
+        {
+            var command = new ImprimirPedidoCommand { PedidoID = pedido.PedidoID };
+            var result = await Mediator.Send(command);
+
+            if (result)
+            {
+                pedido.EstadoImpresion = true;
+                pedido.FechaImpresion = DateTime.Now;
+                Snackbar.Add($"Pedido {pedido.Folio} enviado a impresión", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Error al imprimir el pedido", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al imprimir: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetEstadoDisplayName(string estado)
+    {
+        return estado switch
+        {
+            "EnEspera" => "En Espera",
+            "EnRuta" => "En Ruta",
+            "Entregado" => "Entregado",
+            "Cancelado" => "Cancelado",
+            _ => estado
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
+

@@ -1,0 +1,48 @@
+@using MudBlazor
+
+<MudPaper Class="pa-2 d-flex gap-2 align-center" Elevation="4" Style="background-color: var(--mud-palette-surface); z-index: 10;">
+    <MudTextField @bind-Value="_message" 
+                 Placeholder="Escribe un mensaje..." 
+                 Variant="Variant.Outlined" 
+                 FullWidth="true" 
+                 OnKeyDown="HandleKeyDown" 
+                 Immediate="true" 
+                 Lines="1"
+                 Margin="Margin.Dense"
+                 Adornment="Adornment.End"
+                 AdornmentIcon="@Icons.Material.Filled.SentimentSatisfied"
+                 AdornmentColor="Color.Default"
+                 Class="rounded-pill"
+                 Style="background-color: var(--mud-palette-background);" />
+                 
+    <MudIconButton Icon="@Icons.Material.Filled.Send" 
+                  Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  OnClick="Send" 
+                  Disabled="@string.IsNullOrWhiteSpace(_message)" 
+                  AriaLabel="Enviar mensaje" 
+                  Class="rounded-circle"/>
+</MudPaper>
+
+@code {
+    [Parameter] public EventCallback<string> OnSendMessage { get; set; }
+
+    private string _message = "";
+
+    private async Task Send()
+    {
+        if (!string.IsNullOrWhiteSpace(_message))
+        {
+            await OnSendMessage.InvokeAsync(_message);
+            _message = "";
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await Send();
+        }
+    }
+}

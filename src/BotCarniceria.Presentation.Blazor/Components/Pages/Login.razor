@@ -1,0 +1,53 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@layout Layout.LoginLayout
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="4" Class="pa-8" Style="width: 400px;">
+    <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">Bot Carnicería</MudText>
+    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-6">Iniciar Sesión</MudText>
+    
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+    }
+
+    <form method="post" action="/account/login">
+        <input type="hidden" name="returnUrl" value="@_returnUrl" />
+        
+        <div class="mb-4">
+            <label class="form-label" for="username">Usuario</label>
+            <input type="text" id="username" name="username" class="form-control" required autoFocus />
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label" for="password">Contraseña</label>
+            <input type="password" id="password" name="password" class="form-control" required />
+        </div>
+        
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Class="mt-6">
+            Ingresar
+        </MudButton>
+    </form>
+</MudCard>
+
+@code {
+    private string? _errorMessage;
+    private string _returnUrl = "/";
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("error", out var error))
+        {
+            _errorMessage = error;
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var returnUrl))
+        {
+            _returnUrl = returnUrl;
+        }
+    }
+}

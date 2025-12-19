@@ -1,0 +1,47 @@
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using MediatR
+@using MudBlazor
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField Label="Clave" Value="@Config.Clave" ReadOnly="true" />
+        <MudTextField Label="Descripción" Value="@Config.Descripcion" ReadOnly="true" Lines="2" />
+        <MudTextField @bind-Value="newValue" Label="Valor" Lines="3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public ConfiguracionDto Config { get; set; }
+
+    private string newValue;
+
+    protected override void OnInitialized()
+    {
+        newValue = Config.Valor;
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Submit()
+    {
+        var result = await Mediator.Send(new UpdateConfiguracionCommand(Config.Clave, newValue));
+        if (result)
+        {
+            Snackbar.Add("Configuración actualizada", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            Snackbar.Add("Error al actualizar", Severity.Error);
+        }
+    }
+}

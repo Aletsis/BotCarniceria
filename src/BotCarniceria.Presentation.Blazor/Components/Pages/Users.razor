@@ -1,0 +1,119 @@
+@page "/usuarios"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@attribute [Authorize(Roles = "admin")]
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Gestión de Usuarios</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddUser" Class="mb-4">Nuevo Usuario</MudButton>
+
+<MudTable Items="@_users" Dense="true" Hover="true" Loading="@_loading" LoadingProgressColor="Color.Info">
+    <HeaderContent>
+        <MudTh>Usuario</MudTh>
+        <MudTh>Nombre</MudTh>
+        <MudTh>Rol</MudTh>
+        <MudTh>Estado</MudTh>
+        <MudTh>Acciones</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Usuario">@context.NombreUsuario</MudTd>
+        <MudTd DataLabel="Nombre">@context.NombreCompleto</MudTd>
+        <MudTd DataLabel="Rol">@context.Rol</MudTd>
+        <MudTd DataLabel="Estado">
+            @if (context.IsLocked)
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small">Bloqueado</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Color="@(context.Activo ? Color.Success : Color.Error)" Size="Size.Small">@(context.Activo ? "Activo" : "Inactivo")</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Acciones">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditUser(context))" AriaLabel="Editar usuario" />
+            <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" OnClick="@(() => ChangePassword(context))" AriaLabel="Restablecer contraseña" />
+            <MudIconButton Icon="@(context.Activo ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)" 
+                           Color="@(context.Activo ? Color.Error : Color.Success)" 
+                           Size="Size.Small" 
+                           OnClick="@(() => ToggleStatus(context))" 
+                           AriaLabel="@(context.Activo ? "Desactivar usuario" : "Activar usuario")" />
+            @if (context.IsLocked)
+            {
+                <MudTooltip Text="Desbloquear usuario">
+                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Warning" OnClick="@(() => UnlockUser(context))" AriaLabel="Desbloquear usuario" />
+                </MudTooltip>
+            }
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private List<UsuarioDto> _users = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        _users = await Mediator.Send(new GetAllUsuariosQuery());
+        _loading = false;
+    }
+
+    private async Task AddUser()
+    {
+        var dialog = await DialogService.ShowAsync<Dialogs.UserDialog>("Nuevo Usuario");
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadUsers();
+    }
+
+    private async Task EditUser(UsuarioDto user)
+    {
+        var parameters = new DialogParameters<Dialogs.UserDialog> { { x => x.User, user } };
+        var dialog = await DialogService.ShowAsync<Dialogs.UserDialog>("Editar Usuario", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadUsers();
+    }
+
+    private async Task ToggleStatus(UsuarioDto user)
+    {
+        var result = await Mediator.Send(new ToggleUsuarioActivoCommand(user.UsuarioID, !user.Activo));
+        if (result)
+        {
+            Snackbar.Add(user.Activo ? "Usuario desactivado" : "Usuario activado", Severity.Success);
+            await LoadUsers();
+        }
+    }
+
+    private async Task ChangePassword(UsuarioDto user)
+    {
+        // Implementation for password change dialog could go here
+        Snackbar.Add("Funcionalidad pendiente: Cambiar contraseña", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task UnlockUser(UsuarioDto user)
+    {
+        var result = await Mediator.Send(new ResetUserLockoutCommand(user.UsuarioID));
+        if (result)
+        {
+            Snackbar.Add($"Usuario {user.NombreUsuario} desbloqueado", Severity.Success);
+            await LoadUsers();
+        }
+        else
+        {
+             Snackbar.Add("Error al desbloquear usuario", Severity.Error);
+        }
+    }
+}

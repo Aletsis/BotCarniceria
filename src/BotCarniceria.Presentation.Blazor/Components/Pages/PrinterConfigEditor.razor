@@ -1,0 +1,202 @@
+@using BotCarniceria.Core.Domain.Models
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using System.Text.Json
+@using MediatR
+@using MudBlazor 
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="0" Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Administración de Impresoras</MudText>
+            <MudText Typo="Typo.body2">Configure las impresoras disponibles y seleccione la predeterminada.</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+             <MudButton StartIcon="@Icons.Material.Filled.Save" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveConfig">Guardar Cambios</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4" Elevation="2">
+                    <MudText Typo="Typo.subtitle1" Class="mb-3"><b>@(_editingPrinter == null ? "Nueva Impresora" : "Editar Impresora")</b></MudText>
+                    <MudForm @ref="form" @bind-IsValid="@success">
+                        <MudTextField @bind-Value="newPrinter.Name" Label="Nombre" Required="true" RequiredError="Nombre es requerido" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3"/>
+                        <MudTextField @bind-Value="newPrinter.IpAddress" Label="IP Address" Required="true" RequiredError="IP es requerida" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3"/>
+                        <MudNumericField T="int" @bind-Value="newPrinter.Port" Label="Puerto" Required="true" Variant="Variant.Outlined" Margin="Margin.Dense"/> 
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SavePrinter" Class="mt-4" FullWidth="true" Disabled="@(!success)">@(_editingPrinter == null ? "Agregar" : "Actualizar")</MudButton>
+                        @if (_editingPrinter != null)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CancelEdit" Class="mt-2" FullWidth="true">Cancelar</MudButton>
+                        }
+                    </MudForm>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="8">
+                 <MudTable Items="@settings.Printers" Hover="true" Dense="true" Elevation="2">
+                    <HeaderContent>
+                        <MudTh>Nombre</MudTh>
+                        <MudTh>IP</MudTh>
+                        <MudTh>Puerto</MudTh>
+                        <MudTh>Predeterminada</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Nombre">@context.Name</MudTd>
+                        <MudTd DataLabel="IP">@context.IpAddress</MudTd>
+                        <MudTd DataLabel="Puerto">@context.Port</MudTd>
+                        <MudTd DataLabel="Predeterminada">
+                            @if (settings.DefaultPrinterName == context.Name)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">Si</MudChip>
+                            }
+                            else
+                            {
+                                <MudTooltip Text="Establecer como predeterminada">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.CheckCircle" OnClick="@(() => SetDefault(context.Name))" Color="Color.Default"/>
+                                </MudTooltip>
+                            }
+                        </MudTd>
+                         <MudTd DataLabel="Acciones">
+                             <MudTooltip Text="Editar">
+                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="@(() => EditPrinter(context))" />
+                             </MudTooltip>
+                             <MudTooltip Text="Eliminar impresora">
+                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemovePrinter(context))" />
+                             </MudTooltip>
+                         </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText>No hay impresoras configuradas.</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ConfiguracionDto Config { get; set; }
+    [Parameter] public EventCallback OnConfigSaved { get; set; }
+
+    private PrinterSettings settings = new();
+    private PrinterConfig newPrinter = new();
+    private MudForm form;
+    private bool success;
+
+    private PrinterConfig _editingPrinter = null;
+
+    protected override void OnInitialized()
+    {
+        if (Config != null && !string.IsNullOrEmpty(Config.Valor))
+        {
+            try
+            {
+               settings = JsonSerializer.Deserialize<PrinterSettings>(Config.Valor) ?? new PrinterSettings();
+            }
+            catch
+            {
+                settings = new PrinterSettings();
+            }
+        }
+        else 
+        {
+            settings = new PrinterSettings();
+        }
+    }
+
+    private async Task SavePrinter()
+    {
+        if (settings.Printers.Any(p => p != _editingPrinter && p.Name.Equals(newPrinter.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Snackbar.Add("Ya existe una impresora con ese nombre", Severity.Warning);
+            return;
+        }
+        
+        if (_editingPrinter == null)
+        {
+            settings.Printers.Add(new() { 
+                Name = newPrinter.Name, 
+                IpAddress = newPrinter.IpAddress, 
+                Port = newPrinter.Port 
+            });
+            
+            if (settings.Printers.Count == 1)
+            {
+                settings.DefaultPrinterName = newPrinter.Name;
+            }
+        }
+        else
+        {
+            // If updating currently default printer and name changes, update default name reference
+            if (settings.DefaultPrinterName == _editingPrinter.Name && _editingPrinter.Name != newPrinter.Name)
+            {
+                settings.DefaultPrinterName = newPrinter.Name;
+            }
+
+            _editingPrinter.Name = newPrinter.Name;
+            _editingPrinter.IpAddress = newPrinter.IpAddress;
+            _editingPrinter.Port = newPrinter.Port;
+            
+            _editingPrinter = null;
+        }
+
+        newPrinter = new();
+        await form.ResetAsync();
+    }
+
+    private void EditPrinter(PrinterConfig printer)
+    {
+        _editingPrinter = printer;
+        newPrinter = new PrinterConfig 
+        { 
+            Name = printer.Name, 
+            IpAddress = printer.IpAddress, 
+            Port = printer.Port 
+        };
+    }
+
+    private async Task CancelEdit()
+    {
+        _editingPrinter = null;
+        newPrinter = new();
+        await form.ResetAsync();
+    }
+
+    private async Task RemovePrinter(PrinterConfig printer)
+    {
+        settings.Printers.Remove(printer);
+        if (_editingPrinter == printer)
+        {
+            await CancelEdit();
+        }
+        if (settings.DefaultPrinterName == printer.Name)
+        {
+            settings.DefaultPrinterName = settings.Printers.FirstOrDefault()?.Name ?? "";
+        }
+    }
+
+    private void SetDefault(string name)
+    {
+        settings.DefaultPrinterName = name;
+    }
+
+    private async Task SaveConfig()
+    {
+        // Use specific command for updating printer settings
+        // This delegates validation and serialization to the Application layer
+        bool result = await Mediator.Send(new UpdatePrinterSettingsCommand(settings));
+        
+        if (result)
+        {
+            Snackbar.Add("Configuración de impresoras guardada", Severity.Success);
+            await OnConfigSaved.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add("Error al guardar la configuración", Severity.Error);
+        }
+    }
+}

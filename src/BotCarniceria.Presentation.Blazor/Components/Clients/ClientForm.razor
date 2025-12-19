@@ -1,0 +1,61 @@
+@using BotCarniceria.Core.Application.DTOs
+@using MudBlazor
+@using BotCarniceria.Presentation.Blazor.Components.Shared
+
+<div style="position: relative">
+    <LoadingOverlay Visible="@IsLoading" Text="Guardando..." />
+    
+    <MudForm @ref="form" @bind-IsValid="@success">
+        <MudTextField @bind-Value="Model.Nombre" 
+                      Label="Nombre" 
+                      Required="true" 
+                      RequiredError="El nombre es obligatorio"
+                      Variant="Variant.Outlined"
+                      Class="mb-4" />
+                      
+        <MudTextField @bind-Value="Model.NumeroTelefono" 
+                      Label="Teléfono" 
+                      ReadOnly="@IsEdit" 
+                      Required="true"
+                      RequiredError="El teléfono es obligatorio"
+                      HelperText="@(IsEdit ? "El número de teléfono no se puede cambiar" : "")"
+                      Variant="Variant.Outlined"
+                      Class="mb-4" />
+                      
+        <MudTextField @bind-Value="Model.Direccion" 
+                      Label="Dirección" 
+                      Lines="3" 
+                      Variant="Variant.Outlined"
+                      Class="mb-4" />
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <MudButton OnClick="OnCancel" Variant="Variant.Text" Disabled="@IsLoading">Cancelar</MudButton>
+            <MudButton Color="Color.Primary" 
+                       Variant="Variant.Filled" 
+                       OnClick="Submit"
+                       Disabled="@(!success || IsLoading)">
+                Guardar
+            </MudButton>
+        </div>
+    </MudForm>
+</div>
+
+@code {
+    [Parameter] public ClienteDto Model { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private MudForm form;
+    private bool success;
+
+    private async Task Submit()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            await OnValidSubmit.InvokeAsync();
+        }
+    }
+}

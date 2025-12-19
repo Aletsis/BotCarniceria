@@ -1,0 +1,163 @@
+﻿@page "/"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@attribute [Authorize(Roles = "admin,supervisor,editor")]
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@using MudBlazor
+@inject IMediator Mediator
+
+<PageTitle>Dashboard</PageTitle>
+
+<MudContainer Class="mt-8 mb-8" MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.h3" Class="mb-4">Dashboard</MudText>
+    <MudText Typo="Typo.subtitle1" Class="mb-8">Resumen de actividad y alertas críticas.</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <!-- Stats Cards -->
+        <MudGrid Class="mb-8">
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="3" Class="py-4">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Pedidos Hoy</MudText>
+                        <MudText Typo="Typo.h3" Align="Align.Center" Color="Color.Primary">@_stats.PedidosHoy</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="3" Class="py-4">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Chats Activos</MudText>
+                        <MudText Typo="Typo.h3" Align="Align.Center" Color="Color.Secondary">@_stats.ChatsActivos</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <!-- Revenue Placeholders -->
+            <MudItem xs="12" sm="6" md="3">
+                 <MudCard Elevation="3" Class="py-4">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Ingresos Hoy</MudText>
+                        <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Success">$@_stats.IngresosHoy.ToString("N2")</MudText>
+                        <MudText Typo="Typo.caption" Align="Align.Center" Class="d-block">(Calculado)</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="3">
+                 <MudCard Elevation="3" Class="py-4">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Ingresos Totales</MudText>
+                        <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Info">$@_stats.IngresosTotales.ToString("N2")</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <!-- Alerts Section -->
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="3" Style="height: 100%;">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Alertas Críticas</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                             <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_stats.AlertasCriticas.Any())
+                        {
+                            <MudList T="string" Dense="true">
+                                @foreach (var alert in _stats.AlertasCriticas)
+                                {
+                                    <MudListItem Icon="@Icons.Material.Filled.Error" IconColor="Color.Error">
+                                        @alert
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column align-center justify-center py-8">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" Class="mb-2"/>
+                                <MudText Color="Color.Success">Todo en orden</MudText>
+                            </div>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Chart Section -->
+            <MudItem xs="12" md="8">
+                <MudCard Elevation="3" Style="height: 100%;">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Actividad de Pedidos (Por Hora)</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                         @if (_series.Count > 0)
+                        {
+                             <MudChart ChartType="ChartType.Bar" ChartSeries="@_series" XAxisLabels="@_xAxisLabels" Width="100%" Height="300px"></MudChart>
+                        }
+                        else
+                        {
+                             <MudText Align="Align.Center" Class="py-8">No hay actividad registrada hoy.</MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private DashboardStatsDto _stats = new();
+    private bool _loading = true;
+    private List<ChartSeries> _series = new();
+    private string[] _xAxisLabels = { };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try 
+        {
+            _stats = await Mediator.Send(new GetDashboardStatsQuery());
+            
+            // Prepare Chart Data
+            if (_stats.ActividadPorHora.Any())
+            {
+                 // Ensure we have labels for all represented hours or just the list
+                 _xAxisLabels = _stats.ActividadPorHora.Select(x => x.Hora).ToArray();
+                 _series = new List<ChartSeries>()
+                 {
+                     new ChartSeries() { Name = "Pedidos", Data = _stats.ActividadPorHora.Select(x => (double)x.CantidadPedidos).ToArray() }
+                 };
+            }
+            else
+            {
+                // No specific action needed for empty state as _series is initialized empty
+            }
+        }
+        catch (Exception ex)
+        {
+             // Log error
+             Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+    
+    // Helper property to check specific chart data logic
+}

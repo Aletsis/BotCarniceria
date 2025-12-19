@@ -1,0 +1,230 @@
+@page "/configuraciones"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@attribute [Authorize(Roles = "admin")]
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Configuraciones del Sistema</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        @foreach (var category in _groupedConfigs.Keys.OrderBy(k => k))
+        {
+            <MudTabPanel Text="@category" Icon="@GetCategoryIcon(category)">
+                @if (category == "Printers")
+                {
+                     var printerConfig = _groupedConfigs[category].FirstOrDefault(c => c.Clave == BotCarniceria.Core.Domain.Constants.ConfigurationKeys.Printers.Configuration);
+                     if (printerConfig != null) {
+                        <PrinterConfigEditor Config="@printerConfig" OnConfigSaved="LoadConfigs" />
+                     }
+                     else 
+                     {
+                        <MudAlert Severity="Severity.Warning">No se encontró la configuración avanzada de impresoras (Printers.Configuration). Verifique si se ejecutó la inicialización o use la tabla antigua.</MudAlert>
+                        <MudTable Items="@_groupedConfigs[category]" Dense="true" Hover="true" Elevation="0" Filter="new Func<ConfiguracionDto,bool>(FilterFunc1)">
+                        <ToolBarContent>
+                            <MudText Typo="Typo.h6">@category</MudText>
+                            <MudSpacer />
+                            <MudTextField @bind-Value="searchString1" Placeholder="Buscar" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Clave</MudTh>
+                            <MudTh>Valor</MudTh>
+                            <MudTh>Descripción</MudTh>
+                            <MudTh>Tipo</MudTh>
+                            <MudTh>Acciones</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Clave">
+                                <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Clave</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Valor">
+                                @if (context.Clave.Contains("Token") || context.Clave.Contains("Secret") || context.Clave.Contains("Password"))
+                                {
+                                    <MudText Color="Color.Secondary">********</MudText>
+                                }
+                                else if (context.Tipo == "BOOLEAN")
+                                {
+                                    <MudChip T="string" Color="@(context.Valor == "true" ? Color.Success : Color.Error)" Size="Size.Small" Variant="Variant.Outlined">
+                                        @(context.Valor == "true" ? "Sí" : "No")
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        @context.Valor
+                                    </MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Descripción">
+                                 <MudText Typo="Typo.caption">@context.Descripcion</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Tipo">
+                                <MudChip T="string" Size="Size.Small" Label="true">@context.Tipo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Acciones">
+                                @if (context.Editable)
+                                {
+                                    <MudTooltip Text="Editar configuración">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => EditConfig(context))" AriaLabel="Editar configuración" />
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="No editable">
+                                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Default" />
+                                    </MudTooltip>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager />
+                        </PagerContent>
+                    </MudTable>
+                     }
+                }
+                else
+                {
+                <MudTable Items="@_groupedConfigs[category]" Dense="true" Hover="true" Elevation="0" Filter="new Func<ConfiguracionDto,bool>(FilterFunc1)">
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">@category</MudText>
+                        <MudSpacer />
+                        <MudTextField @bind-Value="searchString1" Placeholder="Buscar" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                    </ToolBarContent>
+                    <HeaderContent>
+                        <MudTh>Clave</MudTh>
+                        <MudTh>Valor</MudTh>
+                        <MudTh>Descripción</MudTh>
+                        <MudTh>Tipo</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Clave">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Clave</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Valor">
+                            @if (context.Clave.Contains("Token") || context.Clave.Contains("Secret") || context.Clave.Contains("Password"))
+                            {
+                                <MudText Color="Color.Secondary">********</MudText>
+                            }
+                            else if (context.Tipo == "BOOLEAN")
+                            {
+                                <MudChip T="string" Color="@(context.Valor == "true" ? Color.Success : Color.Error)" Size="Size.Small" Variant="Variant.Outlined">
+                                    @(context.Valor == "true" ? "Sí" : "No")
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @context.Valor
+                                </MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Descripción">
+                             <MudText Typo="Typo.caption">@context.Descripcion</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Tipo">
+                            <MudChip T="string" Size="Size.Small" Label="true">@context.Tipo</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Acciones">
+                            @if (context.Editable)
+                            {
+                                <MudTooltip Text="Editar configuración">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => EditConfig(context))" AriaLabel="Editar configuración" />
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudTooltip Text="No editable">
+                                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+                }
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+
+@code {
+    private List<ConfiguracionDto> _configs = new();
+    private Dictionary<string, List<ConfiguracionDto>> _groupedConfigs = new();
+    private bool _loading = true;
+    private string searchString1 = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigs();
+    }
+
+    private async Task LoadConfigs()
+    {
+        _loading = true;
+        _configs = await Mediator.Send(new GetAllConfiguracionesQuery());
+        GroupConfigs();
+        _loading = false;
+    }
+
+    private void GroupConfigs()
+    {
+        _groupedConfigs = _configs
+            .GroupBy(c => 
+            {
+                var parts = c.Clave.Split('.');
+                return parts.Length > 1 ? parts[0] : "General";
+            })
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private string GetCategoryIcon(string category)
+    {
+        return category switch
+        {
+            "System" => Icons.Material.Filled.Settings,
+            "WhatsApp" => Icons.Material.Filled.Chat,
+            "Orders" => Icons.Material.Filled.ShoppingCart,
+            "Printers" => Icons.Material.Filled.Print,
+            "General" => Icons.Material.Filled.Dashboard,
+            _ => Icons.Material.Filled.Extension
+        };
+    }
+
+    private bool FilterFunc1(ConfiguracionDto element) => FilterFunc(element, searchString1);
+
+    private bool FilterFunc(ConfiguracionDto element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Clave.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (element.Descripcion != null && element.Descripcion.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+
+    private async Task EditConfig(ConfiguracionDto config)
+    {
+        var parameters = new DialogParameters<Dialogs.EditConfigDialog> { { x => x.Config, config } };
+        var dialog = await DialogService.ShowAsync<Dialogs.EditConfigDialog>("Editar Configuración", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadConfigs();
+        }
+    }
+
+    [Inject] IDialogService DialogService { get; set; }
+}

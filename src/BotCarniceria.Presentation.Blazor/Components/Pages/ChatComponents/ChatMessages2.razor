@@ -1,0 +1,221 @@
+@using BotCarniceria.Core.Application.DTOs
+@using MudBlazor
+@using System.Text.Json
+@inject IJSRuntime JSRuntime
+
+<div class="d-flex flex-column flex-grow-1 overflow-auto pa-4 relative" id="chatContainer" style="background-color: #e5ddd5; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat;">
+    @if (HasMoreMessages)
+    {
+        <div class="d-flex justify-center my-2">
+            <MudButton OnClick="OnLoadMore" Variant="Variant.Filled" Color="Color.Surface" Size="Size.Small" Disabled="IsLoading" Class="rounded-pill shadow-sm">
+                @(IsLoading ? "Cargando..." : "Cargar anteriores")
+            </MudButton>
+        </div>
+    }
+
+    <Virtualize Items="Messages" Context="msg">
+         <div class="d-flex flex-column mb-2 @(msg.EsEntrante ? "align-start" : "align-end")" Style="max-width: 100%;">
+             <MudPaper Class="@(msg.EsEntrante ? "received-message" : "sent-message")" Elevation="1">
+                 
+                 @if (msg.Tipo == "imagen")
+                 {
+                     <MudImage Src="@msg.Contenido" Fluid="true" Class="rounded-lg mb-1" Style="max-height: 300px; object-fit: cover;" />
+                     @if (!string.IsNullOrEmpty(GetCaption(msg.Metadata)))
+                     {
+                         <MudText Typo="Typo.body2">@GetCaption(msg.Metadata)</MudText>
+                     }
+                 }
+                 else if (msg.Tipo == "audio")
+                 {
+                     <div class="d-flex align-center pa-1">
+                         <audio controls style="max-width: 250px;">
+                             <source src="@msg.Contenido" />
+                             Tu navegador no soporta audio.
+                         </audio>
+                     </div>
+                 }
+                 else if (msg.Tipo == "documento")
+                 {
+                     <div class="d-flex align-center pa-2 rounded" style="background-color: rgba(0,0,0,0.05);">
+                         <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Medium" Class="mr-2" />
+                         <div class="d-flex flex-column">
+                             <MudLink Href="@msg.Contenido" Target="_blank" Underline="Underline.None" Color="Color.Primary">
+                                 <MudText Typo="Typo.body2"><b>@(GetFilename(msg.Metadata) ?? "Descargar Documento")</b></MudText>
+                             </MudLink>
+                             @if (!string.IsNullOrEmpty(GetCaption(msg.Metadata)))
+                             {
+                                 <MudText Typo="Typo.caption">@GetCaption(msg.Metadata)</MudText>
+                             }
+                         </div>
+                     </div>
+                 }
+                 else if (msg.Tipo == "ubicacion")
+                 {
+                     var parts = msg.Contenido.Split(',');
+                     var lat = parts.Length > 0 ? parts[0] : "";
+                     var lng = parts.Length > 1 ? parts[1] : "";
+                     <div class="d-flex align-center pa-2 rounded" style="background-color: rgba(0,0,0,0.05);">
+                         <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Medium" Class="mr-2" Color="Color.Error"/>
+                         <div class="d-flex flex-column">
+                             <MudLink Href="@($"https://www.google.com/maps/search/?api=1&query={lat},{lng}")" Target="_blank" Underline="Underline.None" Color="Color.Primary">
+                                 <MudText Typo="Typo.body2"><b>Ver Ubicación</b></MudText>
+                             </MudLink>
+                             <MudText Typo="Typo.caption">@msg.Metadata</MudText>
+                         </div>
+                     </div>
+                 }
+                 else
+                 {
+                     <MudText Typo="Typo.body1" Style="white-space: pre-wrap; word-break: break-word;">@msg.Contenido</MudText>
+                 }
+
+                 <div class="d-flex justify-end mt-1">
+                    <MudText Typo="Typo.caption" Style="font-size: 0.7rem; opacity: 0.7;">
+                        @msg.Fecha.ToLocalTime().ToString("t")
+                    </MudText>
+                 </div>
+             </MudPaper>
+         </div>
+    </Virtualize>
+
+    @if (IsTyping)
+    {
+        <div class="d-flex flex-column mb-2 align-start">
+             <MudPaper Class="received-message pa-2" Elevation="1">
+                 <div class="typing-indicator">
+                     <span></span>
+                     <span></span>
+                     <span></span>
+                 </div>
+             </MudPaper>
+        </div>
+    }
+    
+    <div id="bottom-marker" style="height: 1px;"></div>
+</div>
+
+<style>
+    .received-message {
+        background-color: white;
+        padding: 8px 12px;
+        border-radius: 0px 12px 12px 12px;
+        max-width: 80%;
+        position: relative;
+    }
+    /* Add a little tail for received */
+    .received-message::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -8px;
+        width: 0;
+        height: 0;
+        border-top: 0px solid transparent;
+        border-right: 12px solid white; 
+        border-bottom: 12px solid transparent;
+    }
+
+    .sent-message {
+        background-color: #dcf8c6; 
+        /* Dark mode friendly needed? */
+        padding: 8px 12px;
+        border-radius: 12px 0px 12px 12px;
+        max-width: 80%;
+        position: relative;
+    }
+    
+    /* Add a little tail for sent */
+    .sent-message::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: -8px;
+        width: 0;
+        height: 0;
+        border-top: 0px solid transparent;
+        border-left: 12px solid #dcf8c6;
+        border-bottom: 12px solid transparent;
+    }
+
+    .mud-theme-dark .received-message {
+        background-color: #262d31;
+        color: white;
+    }
+    .mud-theme-dark .received-message::before {
+         border-right: 12px solid #262d31;
+    }
+
+    .mud-theme-dark .sent-message {
+        background-color: #056162;
+         color: white;
+    }
+    .mud-theme-dark .sent-message::before {
+        border-left: 12px solid #056162;
+    }
+
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+    }
+    .typing-indicator span {
+        width: 6px;
+        height: 6px;
+        background-color: #909090;
+        border-radius: 50%;
+        animation: blink 1.4s infinite both;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @@keyframes blink {
+        0% { opacity: 0.2; transform: scale(0.8); }
+        20% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0.2; transform: scale(0.8); }
+    }
+</style>
+
+@code {
+    [Parameter] public List<MensajeDto> Messages { get; set; } = new();
+    [Parameter] public bool HasMoreMessages { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsTyping { get; set; }
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+
+    public async Task ScrollToBottom()
+    {
+        try 
+        {
+            // Wait for render
+            await Task.Delay(100);
+            await JSRuntime.InvokeVoidAsync("eval", "var el = document.getElementById('chatContainer'); if(el) el.scrollTop = el.scrollHeight;");
+        }
+        catch { /* Ignore */ }
+    }
+
+    private string? GetCaption(string? metadata)
+    {
+        if (string.IsNullOrEmpty(metadata)) return null;
+        try 
+        {
+             using var doc = JsonDocument.Parse(metadata);
+             if (doc.RootElement.TryGetProperty("Caption", out var cap)) return cap.GetString();
+        } 
+        catch {}
+        return null;
+    }
+
+    private string? GetFilename(string? metadata)
+    {
+        if (string.IsNullOrEmpty(metadata)) return null;
+        try 
+        {
+             using var doc = JsonDocument.Parse(metadata);
+             if (doc.RootElement.TryGetProperty("Filename", out var f)) return f.GetString();
+        } 
+        catch {}
+        return null;
+    }
+}

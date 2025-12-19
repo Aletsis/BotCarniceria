@@ -1,0 +1,393 @@
+@page "/clientes"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@attribute [Authorize(Roles = "admin,supervisor")]
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using BotCarniceria.Presentation.Blazor.Components.Shared
+
+<AuthorizeView Roles="admin,supervisor,editor">
+    <Authorized>
+        <PageTitle>Clientes</PageTitle>
+
+        <MudText Typo="Typo.h4" GutterBottom="true">Gestión de Clientes</MudText>
+
+        <!-- Filtros y Acciones -->
+        <MudPaper Class="pa-4 ma-2" Elevation="2">
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_searchString" 
+                                  Placeholder="Buscar por nombre o teléfono..." 
+                                  Label="Buscar Clientes"
+                                  Adornment="Adornment.Start" 
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="ApplyFilters" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="bool?" 
+                               @bind-Value="_filtroActivo" 
+                               Label="Estado" 
+                               Clearable="true"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem T="bool?" Value="true">Activos</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="false">Inactivos</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Secondary" 
+                               StartIcon="@Icons.Material.Filled.FilterList" 
+                               OnClick="ApplyFilters" 
+                               FullWidth="true"
+                               Class="mt-1">
+                        Aplicar Filtros
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AbrirDialogoCrear"
+                               FullWidth="true"
+                               Class="mt-1">
+                        Nuevo
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Tabla de Clientes -->
+        <MudTable @ref="_table"
+                  T="ClienteDto" 
+                  Items="@_pagedClientes" 
+                  Dense="true" 
+                  Hover="true" 
+                  Loading="@_loading" 
+                  LoadingProgressColor="Color.Info"
+                  Elevation="2"
+                  Class="mt-4">
+            <HeaderContent>
+                <MudTh><MudTableSortLabel SortBy="new Func<ClienteDto, object>(x => x.Nombre)">Nombre</MudTableSortLabel></MudTh>
+                <MudTh>Teléfono</MudTh>
+                <MudTh>Dirección</MudTh>
+                <MudTh>Total Pedidos</MudTh>
+                <MudTh>Último Pedido</MudTh>
+                <MudTh><MudTableSortLabel SortBy="new Func<ClienteDto, object>(x => x.Activo)">Estado</MudTableSortLabel></MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="cliente">
+                <MudTd DataLabel="Nombre">
+                    <MudText Typo="Typo.body2" Class="font-weight-bold">@cliente.Nombre</MudText>
+                </MudTd>
+                <MudTd DataLabel="Teléfono">@cliente.NumeroTelefono</MudTd>
+                <MudTd DataLabel="Dirección">
+                    <MudText Typo="Typo.body2" Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                        @(cliente.Direccion ?? "Sin dirección")
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="Total Pedidos">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                        @cliente.TotalPedidos pedidos
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Último Pedido">
+                    @if (cliente.UltimoPedidoFecha.HasValue)
+                    {
+                        <MudText Typo="Typo.body2">@cliente.UltimoPedidoFecha.Value.ToString("dd/MM/yyyy")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">Sin pedidos</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Estado">
+                    @if (cliente.Activo)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Activo</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactivo</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudTooltip Text="Editar">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                       Size="Size.Small" 
+                                       Color="Color.Primary"
+                                       OnClick="@(() => AbrirDialogoEditar(cliente))" 
+                                       AriaLabel="Editar cliente" />
+                    </MudTooltip>
+                    <MudTooltip Text="@(cliente.Activo ? "Desactivar" : "Activar")">
+                        <MudIconButton Icon="@(cliente.Activo ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)" 
+                                       Size="Size.Small" 
+                                       Color="@(cliente.Activo ? Color.Error : Color.Success)"
+                                       OnClick="@(() => ToggleEstado(cliente))" 
+                                       AriaLabel="@(cliente.Activo ? "Desactivar cliente" : "Activar cliente")" />
+                    </MudTooltip>
+                    <MudTooltip Text="Ver detalles">
+                        <MudIconButton Icon="@Icons.Material.Filled.Info" 
+                                       Size="Size.Small" 
+                                       Color="Color.Info"
+                                       OnClick="@(() => MostrarDetalles(cliente))" 
+                                       AriaLabel="Ver detalles del cliente" />
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>No se encontraron clientes con los filtros aplicados.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+
+        <!-- Información de resultados -->
+        <MudText Typo="Typo.body2" Class="mt-2 ml-2">
+            Mostrando @_pagedClientes.Count() de @_totalClientes clientes
+        </MudText>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">No tienes permisos para ver esta página.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private MudTable<ClienteDto>? _table;
+    private bool _loading = true;
+    private List<ClienteDto> _allClientes = new();
+    private IEnumerable<ClienteDto> _pagedClientes = new List<ClienteDto>();
+    private int _totalClientes = 0;
+
+    // Filtros
+    private string _searchString = "";
+    private bool? _filtroActivo = null;
+
+    // SignalR
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        await ConfigureSignalR();
+    }
+
+    private async Task ConfigureSignalR()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On("ActualizarClientes", async () =>
+            {
+                await LoadData();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var query = new GetAllClientesQuery();
+            _allClientes = await Mediator.Send(query);
+
+            ApplyFiltersLocal();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar clientes: {ex.Message}", Severity.Error);
+            _allClientes = new List<ClienteDto>();
+            _pagedClientes = new List<ClienteDto>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        ApplyFiltersLocal();
+        StateHasChanged();
+    }
+
+    private void ApplyFiltersLocal()
+    {
+        var filtered = _allClientes.AsEnumerable();
+
+        // Filtro por búsqueda
+        if (!string.IsNullOrWhiteSpace(_searchString))
+        {
+            var search = _searchString.ToLower();
+            filtered = filtered.Where(c =>
+                c.Nombre.ToLower().Contains(search) ||
+                c.NumeroTelefono.Contains(search));
+        }
+
+        // Filtro por estado
+        if (_filtroActivo.HasValue)
+        {
+            filtered = filtered.Where(c => c.Activo == _filtroActivo.Value);
+        }
+
+        // Ordenar por nombre
+        filtered = filtered.OrderBy(c => c.Nombre);
+
+        _pagedClientes = filtered;
+        _totalClientes = filtered.Count();
+    }
+
+    private async Task AbrirDialogoCrear()
+    {
+        var parameters = new DialogParameters<Dialogs.EditClientDialog>
+        {
+            { x => x.Cliente, new ClienteDto { Activo = true } }
+        };
+
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Small, 
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<Dialogs.EditClientDialog>("Nuevo Cliente", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadData();
+            
+            // Notificar a otros clientes
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                await hubConnection.SendAsync("NotifyActualizarClientes");
+            }
+        }
+    }
+
+    private async Task AbrirDialogoEditar(ClienteDto cliente)
+    {
+        var parameters = new DialogParameters<Dialogs.EditClientDialog>
+        {
+            { x => x.Cliente, cliente }
+        };
+
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Small, 
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<Dialogs.EditClientDialog>("Editar Cliente", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadData();
+            
+            // Notificar a otros clientes
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                await hubConnection.SendAsync("NotifyActualizarClientes");
+            }
+        }
+    }
+
+    private async Task ToggleEstado(ClienteDto cliente)
+    {
+        var action = cliente.Activo ? "desactivar" : "activar";
+        var parameters = new DialogParameters 
+        { 
+             { "ContentText", $"¿Estás seguro de que deseas {action} al cliente {cliente.Nombre}?" },
+             { "SubmitText", cliente.Activo ? "Desactivar" : "Activar" },
+             { "Color", cliente.Activo ? Color.Error : Color.Success }
+        };
+        
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirmación", parameters, options);
+        var res = await dialog.Result;
+
+        if (res.Canceled) return;
+
+        try
+        {
+            var command = new ToggleClienteActivoCommand(cliente.ClienteID, !cliente.Activo);
+            var result = await Mediator.Send(command);
+
+            if (result)
+            {
+                cliente.Activo = !cliente.Activo;
+                Snackbar.Add($"Cliente {(cliente.Activo ? "activado" : "desactivado")} correctamente", Severity.Success);
+                
+                // Notificar a otros clientes
+                if (hubConnection?.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.SendAsync("NotifyActualizarClientes");
+                }
+            }
+            else
+            {
+                Snackbar.Add("Error al cambiar el estado del cliente", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MostrarDetalles(ClienteDto cliente)
+    {
+        var parameters = new DialogParameters<Dialogs.ClientDetailDialog>
+        {
+            { x => x.ClienteId, cliente.ClienteID }
+        };
+
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Large, 
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        await DialogService.ShowAsync<Dialogs.ClientDetailDialog>($"Detalles: {cliente.Nombre}", parameters, options);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
+
+

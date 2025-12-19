@@ -1,0 +1,224 @@
+@page "/chats"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@using Microsoft.AspNetCore.SignalR.Client
+@using BotCarniceria.Presentation.Blazor.Components.Pages.ChatComponents
+@attribute [Authorize(Roles = "admin,supervisor,editor")]
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<PageTitle>Chats</PageTitle>
+
+<!-- Main Container with fixed height matching viewport minus header -->
+<div class="d-flex w-100" style="height: calc(100vh - 64px); overflow: hidden;">
+    
+    <!-- Sidebar / Chat List -->
+    <div class="d-flex flex-column border-e" style="width: 320px; min-width: 320px; background-color: var(--mud-palette-background);">
+        <ChatList Chats="_chats" SelectedPhone="@_selectedPhone" OnChatSelected="HandleChatSelected" />
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+        @if (_selectedChat != null)
+        {
+            <!-- Header -->
+            <ChatHeader SelectedChat="_selectedChat" OnRefresh="RefreshMessages" />
+
+            <!-- Messages Area (Fills space) -->
+            <ChatMessages @ref="_messagesComponent" 
+                         Messages="_messages" 
+                         HasMoreMessages="_hasMoreMessages" 
+                         IsLoading="_isLoading"
+                         IsTyping="_isTyping"
+                         OnLoadMore="LoadMoreMessages" />
+
+            <!-- Input Area (Fixed at bottom) -->
+            <ChatInput OnSendMessage="SendMessage" />
+        }
+        else
+        {
+            <div class="d-flex flex-column justify-center align-center h-100" style="background-color: var(--mud-palette-background-grey);">
+                <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Large" Color="Color.Default" Class="mb-4" Style="font-size: 5rem; opacity: 0.2;" />
+                <MudText Typo="Typo.h5" Color="Color.Secondary">Selecciona un chat para comenzar</MudText>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ChatSummaryDto> _chats = new();
+    private List<MensajeDto> _messages = new();
+    private ChatSummaryDto? _selectedChat;
+    private string? _selectedPhone;
+    
+    // Pagination & State
+    private int _skip = 0;
+    private const int _pageSize = 20;
+    private bool _hasMoreMessages = true;
+    private bool _isLoading = false;
+    private bool _isTyping = false;
+    
+    private ChatMessages? _messagesComponent;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadChats();
+        await InitializeSignalR();
+    }
+
+    private async Task InitializeSignalR()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.BaseUri.TrimEnd('/') + "/chathub")
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On<string, string, DateTime>("ReceiveMessage", async (user, message, timestamp) =>
+            {
+                if (_selectedChat != null && user == _selectedChat.NumeroTelefono)
+                {
+                    _isTyping = false;
+                    await RefreshMessages();
+                }
+                else
+                {
+                    await LoadChats();
+                    await InvokeAsync(StateHasChanged);
+                }
+            });
+            
+            hubConnection.On<string, bool>("UserTyping", (user, isTyping) => 
+            {
+                if (_selectedChat != null && user == _selectedChat.NumeroTelefono)
+                {
+                    _isTyping = isTyping;
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SignalR Error: {ex.Message}");
+        }
+    }
+    
+    private async Task LoadChats()
+    {
+        _chats = await Mediator.Send(new GetActiveChatsQuery());
+    }
+    
+    private async Task HandleChatSelected(ChatSummaryDto chat)
+    {
+        if (_selectedChat != null && hubConnection?.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("LeaveConversation", _selectedChat.NumeroTelefono);
+        }
+
+        _selectedChat = chat;
+        _selectedPhone = chat.NumeroTelefono;
+        _isTyping = false;
+        
+        if (hubConnection?.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("JoinConversation", chat.NumeroTelefono);
+        }
+
+        await LoadMessages(loadingMore: false);
+    }
+    
+    private async Task RefreshMessages()
+    {
+         await LoadMessages(loadingMore: false);
+    }
+    
+    private async Task LoadMoreMessages()
+    {
+        await LoadMessages(loadingMore: true);
+    }
+
+    private async Task LoadMessages(bool loadingMore)
+    {
+        if (_selectedChat == null) return;
+
+        _isLoading = true;
+        try
+        {
+            if (!loadingMore)
+            {
+                _skip = 0;
+                _hasMoreMessages = true; 
+            }
+
+            var newMessages = await Mediator.Send(new GetChatMessagesQuery 
+            { 
+                PhoneNumber = _selectedChat.NumeroTelefono,
+                Skip = _skip,
+                Take = _pageSize
+            });
+
+            if (newMessages.Count < _pageSize)
+            {
+                _hasMoreMessages = false;
+            }
+
+            if (loadingMore)
+            {
+                _messages.InsertRange(0, newMessages);
+                _skip += newMessages.Count;
+            }
+            else
+            {
+                _messages = newMessages;
+                _skip = newMessages.Count;
+                StateHasChanged();
+                
+                // Trigger scroll in child component
+                if (_messagesComponent != null)
+                {
+                    await _messagesComponent.ScrollToBottom();
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private async Task SendMessage(string messageContent)
+    {
+        if (string.IsNullOrWhiteSpace(messageContent) || _selectedChat == null) return;
+        
+        var success = await Mediator.Send(new SendWhatsAppMessageCommand 
+        { 
+            PhoneNumber = _selectedChat.NumeroTelefono,
+            Message = messageContent
+        });
+        
+        if (success)
+        {
+            await RefreshMessages();
+        }
+        else
+        {
+            Snackbar.Add("Error al enviar mensaje", Severity.Error);
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

@@ -1,0 +1,233 @@
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Application.CQRS.Queries
+@using MediatR
+@inject IMediator Mediator
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (_cliente != null)
+        {
+            <MudGrid>
+                <!-- Información del Cliente -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Información del Cliente</MudText>
+                    <MudDivider />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Nombre</MudText>
+                    <MudText Typo="Typo.body1">@_cliente.Nombre</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Teléfono</MudText>
+                    <MudText Typo="Typo.body1">@_cliente.NumeroTelefono</MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Dirección</MudText>
+                    <MudText Typo="Typo.body1">@(_cliente.Direccion ?? "Sin dirección registrada")</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Estado</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@(_cliente.Activo ? Color.Success : Color.Default)">
+                        @(_cliente.Activo ? "Activo" : "Inactivo")
+                    </MudChip>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Total de Pedidos</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@_cliente.TotalPedidos pedidos</MudChip>
+                </MudItem>
+
+                @if (_cliente.UltimoPedidoFecha.HasValue)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Último Pedido</MudText>
+                        <MudText Typo="Typo.body1">@_cliente.UltimoPedidoFecha.Value.ToString("dd/MM/yyyy HH:mm")</MudText>
+                    </MudItem>
+                }
+
+                <!-- Historial de Pedidos -->
+                <MudItem xs="12" Class="mt-4">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Historial de Pedidos</MudText>
+                    <MudDivider />
+                </MudItem>
+
+                <MudItem xs="12">
+                    @if (_pedidos.Any())
+                    {
+                        <MudTable T="PedidoDto" 
+                                  Items="@_pedidos" 
+                                  Dense="true" 
+                                  Hover="true"
+                                  Elevation="0"
+                                  Breakpoint="Breakpoint.Sm">
+                            <HeaderContent>
+                                <MudTh>Folio</MudTh>
+                                <MudTh>Fecha</MudTh>
+                                <MudTh>Estado</MudTh>
+                                <MudTh>Forma de Pago</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Folio">
+                                    <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Folio</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Fecha">
+                                    <MudText Typo="Typo.body2">@context.Fecha.ToString("dd/MM/yyyy")</MudText>
+                                    <MudText Typo="Typo.caption">@context.Fecha.ToString("HH:mm")</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Estado">
+                                    <MudChip T="string" Size="Size.Small" Color="@GetEstadoColor(context.Estado)">
+                                        @GetEstadoDisplayName(context.Estado)
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Forma de Pago">
+                                    <MudText Typo="Typo.body2">@(context.FormaPago ?? "N/A")</MudText>
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[] { 5, 10, 25 }" />
+                            </PagerContent>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            Este cliente no tiene pedidos registrados.
+                        </MudAlert>
+                    }
+                </MudItem>
+
+                <!-- Estadísticas -->
+                @if (_pedidos.Any())
+                {
+                    <MudItem xs="12" Class="mt-4">
+                        <MudText Typo="Typo.h6" GutterBottom="true">Estadísticas</MudText>
+                        <MudDivider />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Primary">Pedidos Activos</MudText>
+                            <MudText Typo="Typo.h5">@_pedidosActivos</MudText>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Success">Pedidos Entregados</MudText>
+                            <MudText Typo="Typo.h5">@_pedidosEntregados</MudText>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Error">Pedidos Cancelados</MudText>
+                            <MudText Typo="Typo.h5">@_pedidosCancelados</MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Error">
+                No se pudo cargar la información del cliente.
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int ClienteId { get; set; }
+
+    private bool _loading = true;
+    private ClienteDto? _cliente;
+    private List<PedidoDto> _pedidos = new();
+    
+    // Estadísticas
+    private int _pedidosActivos = 0;
+    private int _pedidosEntregados = 0;
+    private int _pedidosCancelados = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+
+        try
+        {
+            // Cargar información del cliente
+            var clienteQuery = new GetClienteByIdQuery(ClienteId);
+            _cliente = await Mediator.Send(clienteQuery);
+
+            if (_cliente != null)
+            {
+                // Cargar pedidos del cliente
+                var pedidosQuery = new GetPedidosByClienteQuery { ClienteID = ClienteId };
+                _pedidos = await Mediator.Send(pedidosQuery);
+
+                // Calcular estadísticas
+                CalcularEstadisticas();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading client details: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void CalcularEstadisticas()
+    {
+        _pedidosActivos = _pedidos.Count(p => p.Estado == "EnEspera" || p.Estado == "EnRuta");
+        _pedidosEntregados = _pedidos.Count(p => p.Estado == "Entregado");
+        _pedidosCancelados = _pedidos.Count(p => p.Estado == "Cancelado");
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private Color GetEstadoColor(string estado)
+    {
+        return estado switch
+        {
+            "EnEspera" => Color.Warning,
+            "EnRuta" => Color.Info,
+            "Entregado" => Color.Success,
+            "Cancelado" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetEstadoDisplayName(string estado)
+    {
+        return estado switch
+        {
+            "EnEspera" => "En Espera",
+            "EnRuta" => "En Ruta",
+            "Entregado" => "Entregado",
+            "Cancelado" => "Cancelado",
+            _ => estado
+        };
+    }
+}

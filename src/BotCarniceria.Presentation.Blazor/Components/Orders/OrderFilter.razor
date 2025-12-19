@@ -1,0 +1,82 @@
+@using MudBlazor
+
+<MudPaper Class="pa-4 ma-2" Elevation="2">
+    <MudGrid>
+        <MudItem xs="12" sm="4">
+            <MudTextField T="string"
+                          Value="SearchString"
+                          ValueChanged="OnSearchStringChanged"
+                          Placeholder="Buscar por folio, cliente o teléfono..." 
+                          Label="Buscar Pedidos"
+                          Adornment="Adornment.Start" 
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearch" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string"
+                       Value="FiltroEstado"
+                       ValueChanged="OnFiltroEstadoChanged"
+                       Label="Filtrar por Estado" 
+                       Variant="Variant.Outlined"
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="@("Todos")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("EnEspera")">En Espera</MudSelectItem>
+                <MudSelectItem Value="@("EnRuta")">En Ruta</MudSelectItem>
+                <MudSelectItem Value="@("Entregado")">Entregado</MudSelectItem>
+                <MudSelectItem Value="@("Cancelado")">Cancelado</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudDatePicker Label="Fecha" 
+                           Date="FechaFiltro"
+                           DateChanged="OnFechaFiltroChanged"
+                           Variant="Variant.Outlined"
+                           Disabled="@IsEditor"
+                           HelperText="@(IsEditor ? "Bloqueado para editores" : "")" />
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Search" 
+                       OnClick="OnSearch" 
+                       FullWidth="true"
+                       Class="mt-1">
+                Buscar
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter] public string SearchString { get; set; }
+    [Parameter] public EventCallback<string> SearchStringChanged { get; set; }
+    
+    [Parameter] public string FiltroEstado { get; set; }
+    [Parameter] public EventCallback<string> FiltroEstadoChanged { get; set; }
+    
+    [Parameter] public DateTime? FechaFiltro { get; set; }
+    [Parameter] public EventCallback<DateTime?> FechaFiltroChanged { get; set; }
+    
+    [Parameter] public bool IsEditor { get; set; }
+    [Parameter] public EventCallback OnSearch { get; set; }
+
+    private async Task OnSearchStringChanged(string value)
+    {
+        SearchString = value;
+        await SearchStringChanged.InvokeAsync(value);
+    }
+
+    private async Task OnFiltroEstadoChanged(string value)
+    {
+        FiltroEstado = value;
+        await FiltroEstadoChanged.InvokeAsync(value);
+    }
+
+    private async Task OnFechaFiltroChanged(DateTime? value)
+    {
+        FechaFiltro = value;
+        await FechaFiltroChanged.InvokeAsync(value);
+    }
+}

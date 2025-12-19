@@ -1,0 +1,33 @@
+@using BotCarniceria.Core.Domain.Enums
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">Seleccione el nuevo estado para la conversación.</MudText>
+        <MudSelect T="ConversationState" Label="Nuevo Estado" @bind-Value="_selectedState" AnchorOrigin="Origin.BottomCenter">
+             @foreach (ConversationState state in Enum.GetValues(typeof(ConversationState)))
+             {
+                 <MudSelectItem Value="@state">@state</MudSelectItem>
+             }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public ConversationState CurrentState { get; set; }
+
+    private ConversationState _selectedState;
+
+    protected override void OnInitialized()
+    {
+        _selectedState = CurrentState;
+    }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(_selectedState));
+    void Cancel() => MudDialog.Cancel();
+}

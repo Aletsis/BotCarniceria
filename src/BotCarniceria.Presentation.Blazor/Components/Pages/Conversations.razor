@@ -1,0 +1,185 @@
+@page "/conversaciones"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@attribute [Authorize(Roles = "admin")]
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Presentation.Blazor.Components.Dialogs
+@using MediatR
+@inject IMediator Mediator
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-4">Historial de Conversaciones</MudText>
+
+<MudTable Items="@_conversaciones" Dense="true" Hover="true" Loading="@_loading" LoadingProgressColor="Color.Info">
+     <HeaderContent>
+         <MudTh>Teléfono</MudTh>
+         <MudTh>Estado</MudTh>
+         <MudTh>Nombre Temp</MudTh>
+         <MudTh>Última Actividad</MudTh>
+         <MudTh>Acciones</MudTh>
+     </HeaderContent>
+     <RowTemplate>
+         <MudTd DataLabel="Teléfono">@context.NumeroTelefono</MudTd>
+         <MudTd DataLabel="Estado">
+             @if (context.EstaExpirada)
+             {
+                 <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">EXPIRADA</MudChip>
+             }
+             else
+             {
+                 <MudChip T="string" Color="@GetStateColor(context.Estado)" Size="Size.Small">@context.Estado</MudChip>
+             }
+         </MudTd>
+         <MudTd DataLabel="Nombre Temp">@context.NombreTemporal</MudTd>
+         <MudTd DataLabel="Última Actividad">@context.UltimaActividad.ToString("dd/MM/yyyy HH:mm:ss")</MudTd>
+         <MudTd DataLabel="Acciones">
+             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="Opciones de conversación">
+                 <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick="@(() => ManageClient(context))">Gestionar Cliente</MudMenuItem>
+                 <MudMenuItem Icon="@Icons.Material.Filled.CleaningServices" OnClick="@(() => ClearBuffer(context))">Limpiar Buffer</MudMenuItem>
+                 <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => ChangeState(context))">Cambiar Estado</MudMenuItem>
+                 <MudDivider />
+                 <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => ResetSession(context))">Resetear Sesión</MudMenuItem>
+             </MudMenu>
+         </MudTd>
+     </RowTemplate>
+     <PagerContent>
+         <MudTablePager />
+     </PagerContent>
+</MudTable>
+
+@code {
+    private List<ConversacionDto> _conversaciones = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSessions();
+    }
+
+    private async Task LoadSessions()
+    {
+        _loading = true;
+        _conversaciones = await Mediator.Send(new GetAllConversationsQuery());
+        _loading = false;
+    }
+
+    private Color GetStateColor(string estado)
+    {
+        return estado switch
+        {
+            "START" => Color.Default,
+            "MENU" => Color.Info,
+            "TAKING_ORDER" => Color.Success,
+            "ADDING_MORE" => Color.Success,
+            "AWAITING_CONFIRM" => Color.Warning,
+            "CONFIRM_ADDRESS" => Color.Warning,
+            "SELECT_PAYMENT" => Color.Warning,
+            "ASK_NAME" => Color.Secondary,
+            "ASK_ADDRESS" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private async Task ManageClient(ConversacionDto conversacion)
+    {
+        var client = await Mediator.Send(new GetClienteByPhoneQuery { PhoneNumber = conversacion.NumeroTelefono });
+        
+        if (client == null)
+        {
+            client = new ClienteDto
+            {
+                NumeroTelefono = conversacion.NumeroTelefono,
+                Nombre = conversacion.NombreTemporal ?? string.Empty,
+                Activo = true
+            };
+        }
+
+        var parameters = new DialogParameters { ["Cliente"] = client };
+        var dialog = DialogService.Show<EditClientDialog>("Gestionar Cliente", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadSessions(); 
+        }
+    }
+
+    private async Task ChangeState(ConversacionDto conversacion)
+    {
+        if (Enum.TryParse<BotCarniceria.Core.Domain.Enums.ConversationState>(conversacion.Estado, out var currentState))
+        {
+            var parameters = new DialogParameters { ["CurrentState"] = currentState };
+            var dialog = DialogService.Show<ChangeStateDialog>("Cambiar Estado Manualmente", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled && result.Data is BotCarniceria.Core.Domain.Enums.ConversationState newState)
+            {
+                var success = await Mediator.Send(new UpdateSessionStateCommand 
+                { 
+                    PhoneNumber = conversacion.NumeroTelefono, 
+                    NewState = newState.ToString() 
+                });
+
+                if (success)
+                {
+                    Snackbar.Add($"Estado cambiado a {newState}", Severity.Success);
+                    await LoadSessions();
+                }
+                else
+                {
+                    Snackbar.Add("Error al cambiar estado", Severity.Error);
+                }
+            }
+        }
+    }
+
+    private async Task ClearBuffer(ConversacionDto conversacion)
+    {
+         bool? result = await DialogService.ShowMessageBox(
+            "Confirmación", 
+            $"¿Limpiar buffer de {conversacion.NumeroTelefono}?", 
+            yesText: "Sí", cancelText: "Cancelar");
+
+        if (result == true)
+        {
+            var success = await Mediator.Send(new UpdateSessionStateCommand 
+            { 
+                PhoneNumber = conversacion.NumeroTelefono, 
+                Buffer = "" // Empty string to clear
+            });
+
+            if (success)
+            {
+                Snackbar.Add("Buffer limpiado", Severity.Success);
+                await LoadSessions();
+            }
+            else
+            {
+                Snackbar.Add("Error al limpiar buffer", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ResetSession(ConversacionDto conversacion)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Confirmación", 
+            $"¿Está seguro que desea resetear la sesión de {conversacion.NumeroTelefono}?", 
+            yesText: "Sí", cancelText: "Cancelar");
+
+        if (result == true)
+        {
+            var success = await Mediator.Send(new ResetSessionCommand { PhoneNumber = conversacion.NumeroTelefono });
+            if (success)
+            {
+                Snackbar.Add("Sesión reseteada correctamente", Severity.Success);
+                await LoadSessions();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo resetear la sesión", Severity.Error);
+            }
+        }
+    }
+}

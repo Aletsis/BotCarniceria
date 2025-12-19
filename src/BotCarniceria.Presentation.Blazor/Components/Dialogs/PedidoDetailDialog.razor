@@ -1,0 +1,128 @@
+@using BotCarniceria.Core.Application.DTOs
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" GutterBottom="true">Información del Pedido</MudText>
+                <MudDivider />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Folio</MudText>
+                <MudText Typo="Typo.body1">@Pedido.Folio</MudText>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Estado</MudText>
+                <MudChip T="string" Color="GetEstadoColor(Pedido.Estado)" Size="Size.Small">@Pedido.Estado</MudChip>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Fecha</MudText>
+                <MudText Typo="Typo.body1">@Pedido.Fecha.ToString("dd/MM/yyyy HH:mm")</MudText>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Forma de Pago</MudText>
+                <MudText Typo="Typo.body1">@(Pedido.FormaPago ?? "No especificado")</MudText>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" GutterBottom="true" Class="mt-4">Información del Cliente</MudText>
+                <MudDivider />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Nombre</MudText>
+                <MudText Typo="Typo.body1">@Pedido.ClienteNombre</MudText>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Teléfono</MudText>
+                <MudText Typo="Typo.body1">@Pedido.ClienteTelefono</MudText>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary">Dirección</MudText>
+                <MudText Typo="Typo.body1">@(Pedido.ClienteDireccion ?? "No especificada")</MudText>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" GutterBottom="true" Class="mt-4">Contenido del Pedido</MudText>
+                <MudDivider />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@Pedido.Contenido</MudText>
+                </MudPaper>
+            </MudItem>
+
+            @if (!string.IsNullOrEmpty(Pedido.Notas))
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6" GutterBottom="true" Class="mt-4">Notas</MudText>
+                    <MudDivider />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                        <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@Pedido.Notas</MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (Pedido.EstadoImpresion)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        <MudText Typo="Typo.body2">
+                            Impreso el @(Pedido.FechaImpresion?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
+                        </MudText>
+                    </MudAlert>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cerrar</MudButton>
+        @if (OnPrint.HasDelegate)
+        {
+            <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.Print" OnClick="HandlePrint">Imprimir</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public PedidoDto Pedido { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<PedidoDto> OnPrint { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task HandlePrint()
+    {
+        await OnPrint.InvokeAsync(Pedido);
+        MudDialog.Close();
+    }
+
+    private Color GetEstadoColor(string estado)
+    {
+        return estado switch
+        {
+            "En espera" => Color.Warning,
+            "En ruta" => Color.Info,
+            "Entregado" => Color.Success,
+            "Cancelado" => Color.Error,
+            _ => Color.Default
+        };
+    }
+}
+

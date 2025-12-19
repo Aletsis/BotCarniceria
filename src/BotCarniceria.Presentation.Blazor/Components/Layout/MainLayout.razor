@@ -1,0 +1,117 @@
+﻿@using BotCarniceria.Core.Application.CQRS.Queries
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+@inject IMediator Mediator
+
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+<SessionTimeout TimeoutMinutes="@_blazorTimeout" WarningMinutes="@_blazorWarning" />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Error">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" AriaLabel="Alternar menú lateral" />
+        <MudText Typo="Typo.h5" Class="ml-3">Bot Carnicería</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness7 : Icons.Material.Filled.Brightness4)" Color="Color.Inherit" OnClick="@ToggleDarkMode" AriaLabel="@(_isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro")" />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body1" Class="mr-2">@context.User.Identity?.Name</MudText>
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout" Href="account/logout" Title="Cerrar sesión" AriaLabel="Cerrar sesión">Salir</MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="my-4 pt-4 h-100">
+             @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode;
+    private int _blazorTimeout = 30; // Default
+    private int _blazorWarning = 5;  // Default
+
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#d32f2f",
+            Secondary = "#8d6e63",
+            Success = "#388e3c",
+            Warning = "#f57c00",
+            Error = "#d32f2f",
+            Background = "#fafafa"
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#821D1D",
+            Secondary = "#a1887f",
+            Success = "#66bb6a",
+            Warning = "#ffa726",
+            Error = "#821D1D",
+            Background = "#303030", // Standard dark background
+            Surface = "#424242",
+            AppbarBackground = "#212121",
+            DrawerBackground = "#212121"
+        }
+    };
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigs();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var storedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkMode");
+            if (bool.TryParse(storedTheme, out var isDark))
+            {
+                _isDarkMode = isDark;
+                StateHasChanged();
+            }
+        }
+    }
+    
+    private async Task LoadConfigs()
+    {
+        try 
+        {
+            // Ideally we would have a more specific query, but fetching all is cached usually or fast enough
+            var configs = await Mediator.Send(new GetAllConfiguracionesQuery());
+            
+            var timeoutStr = configs.FirstOrDefault(c => c.Clave == "Session.BlazorTimeoutMinutes")?.Valor;
+            var warningStr = configs.FirstOrDefault(c => c.Clave == "Session.BlazorWarningMinutes")?.Valor;
+            
+            if (int.TryParse(timeoutStr, out int t)) _blazorTimeout = t;
+            if (int.TryParse(warningStr, out int w)) _blazorWarning = w;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading session configs: {ex.Message}");
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "darkMode", _isDarkMode.ToString());
+    }
+}

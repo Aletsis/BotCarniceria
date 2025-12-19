@@ -1,0 +1,25 @@
+@using BotCarniceria.Core.Application.DTOs
+@using MudBlazor
+
+<MudPaper Elevation="1" Class="pa-3 d-flex justify-space-between align-center z-10 relative" Style="height: 64px; border-radius: 0;">
+    @if (SelectedChat != null)
+    {
+        <div class="d-flex align-center gap-3">
+             <MudAvatar Color="Color.Primary" Size="Size.Medium">@SelectedChat.Nombre.FirstOrDefault()</MudAvatar>
+             <div>
+                 <MudText Typo="Typo.subtitle1" Style="font-weight: bold; line-height: 1.2;">@SelectedChat.Nombre</MudText>
+                 <MudText Typo="Typo.caption" Style="line-height: 1;">@SelectedChat.NumeroTelefono</MudText>
+             </div>
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="OnRefresh" Color="Color.Primary" AriaLabel="Actualizar mensajes" />
+    }
+    else
+    {
+        <MudText Typo="Typo.h6">Chats</MudText>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public ChatSummaryDto? SelectedChat { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+}
