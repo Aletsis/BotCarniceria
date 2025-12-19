@@ -101,34 +101,19 @@ public class MenuStateHandler : IConversationStateHandler
                 return;
             }
 
-            if (cliente.DatosFacturacion != null && !string.IsNullOrEmpty(cliente.DatosFacturacion.RazonSocial))
-            {
-                // Show existing data
-                var data = cliente.DatosFacturacion;
-                var msg = "🧾 *Datos de Facturación Registrados*\n\n" +
-                          $"🏢 *Razón Social:* {data.RazonSocial}\n" +
-                          $"📍 *Calle:* {data.Calle}\n" +
-                          $"🔢 *Número:* {data.Numero}\n" +
-                          $"🏘️ *Colonia:* {data.Colonia}\n" +
-                          $"📮 *CP:* {data.CodigoPostal}\n" +
-                          $"📧 *Correo:* {data.Correo}\n" +
-                          $"📑 *Régimen:* {data.RegimenFiscal}\n\n" +
-                          "¿Son correctos estos datos?";
+            // Show warning about daily billing
+            var warningMessage = "⚠️ *Aviso Importante*\n\n" +
+                                 "Nuestra facturación es diaria, en caso de que tu ticket de compra sea de algún día pasado no se podrá generar tu factura.\n\n" +
+                                 "¿Deseas continuar?";
 
-                var buttons = new List<(string id, string title)>
-                {
-                    ("billing_confirm", "✅ Confirmar"),
-                    ("billing_correct", "📝 Corregir")
-                };
-                await _whatsAppService.SendInteractiveButtonsAsync(phoneNumber, msg, buttons);
-                session.CambiarEstado(ConversationState.BILLING_CONFIRM_DATA);
-            }
-            else
+            var buttons = new List<(string id, string title)>
             {
-                // Ask for data
-                await _whatsAppService.SendTextMessageAsync(phoneNumber, "🧾 *Solicitud de Factura*\n\nPara generar tu factura, necesito los siguientes datos fiscales.\n\nPor favor, ingresa tu *Razón Social* (Nombre de la empresa o persona física):");
-                session.CambiarEstado(ConversationState.BILLING_ASK_RAZON_SOCIAL);
-            }
+                ("billing_warning_continue", "✅ Continuar"),
+                ("billing_warning_cancel", "❌ Cancelar")
+            };
+
+            await _whatsAppService.SendInteractiveButtonsAsync(phoneNumber, warningMessage, buttons);
+            session.CambiarEstado(ConversationState.BILLING_WARNING);
         }
         else if (messageContent == "menu_informacion")
         {

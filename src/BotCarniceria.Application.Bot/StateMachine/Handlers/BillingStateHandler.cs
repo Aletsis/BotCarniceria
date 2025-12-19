@@ -31,6 +31,35 @@ public class BillingStateHandler : IConversationStateHandler
 
         switch (session.Estado)
         {
+            case ConversationState.BILLING_WARNING:
+                if (messageContent == "billing_warning_continue")
+                {
+                    // User accepted the warning, proceed with billing flow
+                    if (cliente.DatosFacturacion != null && !string.IsNullOrEmpty(cliente.DatosFacturacion.RazonSocial))
+                    {
+                        // Show existing data for confirmation
+                        await ShowConfirmation(phoneNumber, cliente, session);
+                    }
+                    else
+                    {
+                        // Ask for billing data
+                        await _whatsAppService.SendTextMessageAsync(phoneNumber, "🧾 *Solicitud de Factura*\n\nPara generar tu factura, necesito los siguientes datos fiscales.\n\nPor favor, ingresa tu *Razón Social* (Nombre de la empresa o persona física):");
+                        session.CambiarEstado(ConversationState.BILLING_ASK_RAZON_SOCIAL);
+                    }
+                }
+                else if (messageContent == "billing_warning_cancel")
+                {
+                    // User cancelled, return to menu
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "De acuerdo, tu solicitud de factura ha sido cancelada. 👍\n\nEscribe 'Hola' para volver al menú principal.");
+                    session.CambiarEstado(ConversationState.MENU);
+                }
+                else
+                {
+                    // Invalid response, show warning again
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "Por favor, selecciona una opción válida.");
+                }
+                break;
+
             case ConversationState.BILLING_ASK_RAZON_SOCIAL:
                 var newRazon = messageContent;
                 UpdateBillingData(cliente, razonSocial: newRazon);

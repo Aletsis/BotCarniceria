@@ -30,6 +30,7 @@ public class StateHandlerFactory : IStateHandlerFactory
             ConversationState.CONFIRM_LATE_ORDER => _serviceProvider.GetRequiredService<ConfirmLateOrderStateHandler>(),
             
             // Billing States
+            ConversationState.BILLING_WARNING => _serviceProvider.GetRequiredService<BillingStateHandler>(),
             ConversationState.BILLING_CHECK_DATA => _serviceProvider.GetRequiredService<BillingStateHandler>(), // Though logic likely in Menu, handler exists just in case
             ConversationState.BILLING_ASK_RAZON_SOCIAL => _serviceProvider.GetRequiredService<BillingStateHandler>(),
             ConversationState.BILLING_ASK_CALLE => _serviceProvider.GetRequiredService<BillingStateHandler>(),
