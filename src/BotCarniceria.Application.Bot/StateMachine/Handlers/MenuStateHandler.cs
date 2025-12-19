@@ -26,17 +26,36 @@ public class MenuStateHandler : IConversationStateHandler
         {
             var cliente = await _unitOfWork.Clientes.GetByPhoneAsync(phoneNumber);
 
-            // Check configured warning hour (default 16:00)
-            var warningHourStr = await _unitOfWork.Settings.GetValorAsync(ConfigurationKeys.Orders.LateOrderWarningStartHour);
+            // Check configured warning time (default 16:00)
+            var warningTimeStr = await _unitOfWork.Settings.GetValorAsync(ConfigurationKeys.Orders.LateOrderWarningStartHour);
             int warningHour = 16;
-            if (!string.IsNullOrEmpty(warningHourStr) && int.TryParse(warningHourStr, out int parsedHour))
+            int warningMinute = 0;
+            
+            if (!string.IsNullOrEmpty(warningTimeStr))
             {
-                warningHour = parsedHour;
+                // Try to parse time format (HH:mm)
+                var timeParts = warningTimeStr.Split(':');
+                if (timeParts.Length == 2 && 
+                    int.TryParse(timeParts[0], out int parsedHour) && 
+                    int.TryParse(timeParts[1], out int parsedMinute))
+                {
+                    warningHour = parsedHour;
+                    warningMinute = parsedMinute;
+                }
+                // Fallback: try to parse as just hour for backward compatibility
+                else if (int.TryParse(warningTimeStr, out int parsedHourOnly))
+                {
+                    warningHour = parsedHourOnly;
+                    warningMinute = 0;
+                }
             }
 
-            if (DateTime.Now.Hour >= warningHour)
+            var warningTime = new TimeSpan(warningHour, warningMinute, 0);
+            var currentTime = DateTime.Now.TimeOfDay;
+
+            if (currentTime >= warningTime)
             {
-                var timeString = DateTime.Today.AddHours(warningHour).ToString("h:mm tt");
+                var timeString = DateTime.Today.Add(warningTime).ToString("h:mm tt");
                 var warningMessage = "⚠️ *Aviso de Horario*\n\n" +
                                      $"Los pedidos son únicamente hasta las {timeString}.\n" +
                                      "Sin embargo, podemos tomar tu pedido para *surtirlo y entregarlo al día siguiente*.\n\n" +

@@ -41,7 +41,7 @@ public static class DbInitializer
                 Configuracion.Create(ConfigurationKeys.System.RetryIntervalSeconds, "60", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Numero, "Intervalo (segundos) entre reintentos"),
                 Configuracion.Create(ConfigurationKeys.System.WorkQueueCount, "2", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Numero, "Número de colas de trabajo simultáneas"),
                 
-                Configuracion.Create(ConfigurationKeys.Orders.LateOrderWarningStartHour, "16", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Numero, "Hora (0-23) de inicio aviso horario")
+                Configuracion.Create(ConfigurationKeys.Orders.LateOrderWarningStartHour, "16:00", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Texto, "Hora de inicio aviso horario (formato HH:mm)")
             };
 
             var existingKeys = await context.Configuraciones.Select(c => c.Clave).ToListAsync();

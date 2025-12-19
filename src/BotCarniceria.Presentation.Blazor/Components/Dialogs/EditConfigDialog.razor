@@ -9,7 +9,16 @@
     <DialogContent>
         <MudTextField Label="Clave" Value="@Config.Clave" ReadOnly="true" />
         <MudTextField Label="Descripción" Value="@Config.Descripcion" ReadOnly="true" Lines="2" />
-        <MudTextField @bind-Value="newValue" Label="Valor" Lines="3" />
+        
+        @if (IsTimeConfig())
+        {
+            <MudTimePicker Label="Valor (Hora)" @bind-Time="timeValue" AmPm="false" Editable="true" 
+                           HelperText="Formato 24 horas (HH:mm)" />
+        }
+        else
+        {
+            <MudTextField @bind-Value="newValue" Label="Valor" Lines="3" />
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancelar</MudButton>
@@ -23,17 +32,40 @@
     [Parameter] public ConfiguracionDto Config { get; set; }
 
     private string newValue;
+    private TimeSpan? timeValue;
 
     protected override void OnInitialized()
     {
         newValue = Config.Valor;
+        
+        // If this is a time configuration, parse the value to TimeSpan
+        if (IsTimeConfig() && !string.IsNullOrEmpty(Config.Valor))
+        {
+            if (TimeSpan.TryParse(Config.Valor, out var parsedTime))
+            {
+                timeValue = parsedTime;
+            }
+        }
+    }
+
+    private bool IsTimeConfig()
+    {
+        return Config.Clave == BotCarniceria.Core.Domain.Constants.ConfigurationKeys.Orders.LateOrderWarningStartHour;
     }
 
     void Cancel() => MudDialog.Cancel();
 
     async Task Submit()
     {
-        var result = await Mediator.Send(new UpdateConfiguracionCommand(Config.Clave, newValue));
+        string valueToSave = newValue;
+        
+        // If this is a time configuration, convert TimeSpan to HH:mm format
+        if (IsTimeConfig() && timeValue.HasValue)
+        {
+            valueToSave = $"{timeValue.Value.Hours:D2}:{timeValue.Value.Minutes:D2}";
+        }
+        
+        var result = await Mediator.Send(new UpdateConfiguracionCommand(Config.Clave, valueToSave));
         if (result)
         {
             Snackbar.Add("Configuración actualizada", Severity.Success);
