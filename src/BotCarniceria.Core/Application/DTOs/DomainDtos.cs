@@ -49,6 +49,7 @@ public class ClienteDto
     public bool Activo { get; set; }
     public int TotalPedidos { get; set; }
     public DateTime? UltimoPedidoFecha { get; set; }
+    public DatosFacturacionDto? DatosFacturacion { get; set; }
     
     public static ClienteDto FromEntity(Cliente cliente)
     {
@@ -60,10 +61,34 @@ public class ClienteDto
             Direccion = cliente.Direccion,
             Activo = cliente.Activo,
             TotalPedidos = cliente.Pedidos?.Count ?? 0,
-            UltimoPedidoFecha = cliente.Pedidos?.OrderByDescending(p => p.Fecha).FirstOrDefault()?.Fecha
+            UltimoPedidoFecha = cliente.Pedidos?.OrderByDescending(p => p.Fecha).FirstOrDefault()?.Fecha,
+            DatosFacturacion = cliente.DatosFacturacion != null ? new DatosFacturacionDto
+            {
+                RazonSocial = cliente.DatosFacturacion.RazonSocial,
+                RFC = cliente.DatosFacturacion.RFC,
+                Calle = cliente.DatosFacturacion.Calle,
+                Numero = cliente.DatosFacturacion.Numero,
+                Colonia = cliente.DatosFacturacion.Colonia,
+                CodigoPostal = cliente.DatosFacturacion.CodigoPostal,
+                Correo = cliente.DatosFacturacion.Correo,
+                RegimenFiscal = cliente.DatosFacturacion.RegimenFiscal
+            } : null
         };
     }
 }
+
+public class DatosFacturacionDto
+{
+    public string RazonSocial { get; set; } = string.Empty;
+    public string RFC { get; set; } = string.Empty;
+    public string Calle { get; set; } = string.Empty;
+    public string Numero { get; set; } = string.Empty;
+    public string Colonia { get; set; } = string.Empty;
+    public string CodigoPostal { get; set; } = string.Empty;
+    public string Correo { get; set; } = string.Empty;
+    public string RegimenFiscal { get; set; } = string.Empty;
+}
+
 
 public class ConfiguracionDto
 {

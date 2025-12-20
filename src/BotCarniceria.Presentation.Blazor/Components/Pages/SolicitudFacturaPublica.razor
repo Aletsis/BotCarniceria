@@ -1,0 +1,685 @@
+@page "/solicitar-factura"
+@layout BotCarniceria.Presentation.Blazor.Components.Layout.PublicLayout
+@using BotCarniceria.Core.Application.CQRS.Queries
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Core.Domain.ValueObjects
+@using MediatR
+@using Microsoft.AspNetCore.Components
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<PageTitle>Solicitar Factura - Carnicería</PageTitle>
+
+<div class="factura-container">
+    <div class="factura-card">
+        <!-- Header -->
+        <div class="factura-header">
+            <div class="icon-wrapper">
+                <MudIcon Icon="@Icons.Material.Filled.Receipt" Size="Size.Large" />
+            </div>
+            <MudText Typo="Typo.h3" Class="title">Solicitud de Factura</MudText>
+            <MudText Typo="Typo.body1" Class="subtitle">
+                Ingresa tu RFC para solicitar tu factura electrónica
+            </MudText>
+        </div>
+
+        @if (_currentStep == Step.IngresarRFC)
+        {
+            <!-- Paso 1: Ingresar RFC -->
+            <div class="step-content">
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    <strong>Importante:</strong> Nuestra facturación es diaria. Si tu ticket de compra es de un día pasado, no podremos generar tu factura.
+                </MudAlert>
+
+                <MudTextField @bind-Value="_rfc" 
+                              Label="RFC" 
+                              Variant="Variant.Outlined"
+                              Placeholder="Ej: XAXX010101000"
+                              MaxLength="13"
+                              Immediate="true"
+                              OnKeyUp="@OnRfcKeyUp"
+                              Class="rfc-input" />
+
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           FullWidth="true"
+                           Size="Size.Large"
+                           OnClick="BuscarCliente"
+                           Disabled="@(string.IsNullOrWhiteSpace(_rfc) || _loading)"
+                           Class="mt-4 action-button">
+                    @if (_loading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Buscando...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />
+                        <span>Buscar</span>
+                    }
+                </MudButton>
+            </div>
+        }
+        else if (_currentStep == Step.MostrarDatos)
+        {
+            <!-- Paso 2: Mostrar y editar datos de facturación -->
+            <div class="step-content">
+                @if (_tieneDatosFacturacionPrevios)
+                {
+                    <MudAlert Severity="Severity.Success" Class="mb-4">
+                        <strong>¡Cliente encontrado!</strong> Verifica que tus datos sean correctos y actualízalos si es necesario.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        <strong>¡Cliente encontrado!</strong> Por favor ingresa tus datos de facturación para continuar.
+                    </MudAlert>
+                }
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_datosFacturacion.RazonSocial" 
+                                      Label="Razón Social" 
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_datosFacturacion.RFC" 
+                                      Label="RFC" 
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Disabled="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="_datosFacturacion.Calle" 
+                                      Label="Calle" 
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="_datosFacturacion.Numero" 
+                                      Label="Número" 
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_datosFacturacion.Colonia" 
+                                      Label="Colonia" 
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_datosFacturacion.CodigoPostal" 
+                                      Label="Código Postal" 
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_datosFacturacion.Telefono" 
+                                      Label="Teléfono" 
+                                      Variant="Variant.Outlined"
+                                      Required="true" 
+                                      InputType="InputType.Telephone"/>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_datosFacturacion.Correo" 
+                                      Label="Correo Electrónico" 
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Email"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value="_datosFacturacion.RegimenFiscal" 
+                                   Label="Régimen Fiscal" 
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            @foreach (var regimen in RegimenFiscalCatalog.Regimenes)
+                            {
+                                <MudSelectItem Value="@regimen.Key">@regimen.Key - @regimen.Value</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+
+                <div class="button-group">
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Default"
+                               OnClick="Cancelar"
+                               Class="action-button">
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
+                        Regresar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               OnClick="ContinuarADatosNota"
+                               Disabled="@(!ValidarDatosFacturacion())"
+                               Class="action-button">
+                        Continuar
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Class="ml-2" />
+                    </MudButton>
+                </div>
+            </div>
+        }
+        else if (_currentStep == Step.DatosNota)
+        {
+            <!-- Paso 3: Datos de la nota -->
+            <div class="step-content">
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    Ingresa los datos de tu ticket de compra
+                </MudAlert>
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_folio" 
+                                      Label="Folio del Ticket" 
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Placeholder="Ej: 12345" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField @bind-Value="_total" 
+                                         Label="Total" 
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         Format="C2"
+                                         Culture="@(new System.Globalization.CultureInfo("es-MX"))"
+                                         Min="0.01m" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value="_usoCFDI" 
+                                   Label="Uso de CFDI" 
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            @foreach (var uso in UsoCFDICatalog.Usos)
+                            {
+                                <MudSelectItem Value="@uso.Key">@uso.Key - @uso.Value</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+
+                <div class="button-group">
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Default"
+                               OnClick="RegresarADatos"
+                               Class="action-button">
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
+                        Regresar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Success"
+                               OnClick="EnviarSolicitud"
+                               Disabled="@(!ValidarDatosNota() || _loading)"
+                               Class="action-button">
+                        @if (_loading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Enviando...</span>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Send" Class="mr-2" />
+                            <span>Enviar Solicitud</span>
+                        }
+                    </MudButton>
+                </div>
+            </div>
+        }
+        else if (_currentStep == Step.Confirmacion)
+        {
+            <!-- Paso 4: Confirmación -->
+            <div class="step-content confirmation">
+                <div class="success-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                </div>
+                <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-3">
+                    ¡Solicitud Enviada!
+                </MudText>
+                <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4">
+                    Tu solicitud de factura ha sido recibida correctamente. 
+                    Recibirás tu factura electrónica en el correo proporcionado.
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mb-4">
+                    Número de solicitud: <strong>#@_solicitudId</strong>
+                </MudText>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           OnClick="NuevaSolicitud"
+                           Class="action-button">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+                    Nueva Solicitud
+                </MudButton>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .factura-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .factura-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 600px;
+        width: 100%;
+        overflow: hidden;
+        animation: slideUp 0.5s ease-out;
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .factura-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 2rem;
+        text-align: center;
+    }
+
+    .icon-wrapper {
+        margin-bottom: 1rem;
+    }
+
+    .title {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white !important;
+    }
+
+    .subtitle {
+        opacity: 0.9;
+        color: white !important;
+    }
+
+    .step-content {
+        padding: 2rem;
+    }
+
+    .rfc-input {
+        text-transform: uppercase;
+    }
+
+    .action-button {
+        height: 48px;
+        font-weight: 600;
+        border-radius: 12px;
+        text-transform: none;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .action-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .button-group .action-button {
+        flex: 1;
+    }
+
+    .confirmation {
+        text-align: center;
+        padding: 3rem 2rem;
+    }
+
+    .success-icon {
+        margin-bottom: 1.5rem;
+        animation: scaleIn 0.5s ease-out;
+    }
+
+    @@keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @@media (max-width: 600px) {
+        .factura-container {
+            padding: 1rem;
+        }
+
+        .factura-header {
+            padding: 2rem 1.5rem;
+        }
+
+        .step-content {
+            padding: 1.5rem;
+        }
+
+        .button-group {
+            flex-direction: column;
+        }
+    }
+</style>
+
+@code {
+    private enum Step
+    {
+        IngresarRFC,
+        MostrarDatos,
+        DatosNota,
+        Confirmacion
+    }
+
+    private Step _currentStep = Step.IngresarRFC;
+    private bool _loading = false;
+    private string _rfc = "";
+    private int? _clienteId = null;
+    private long _solicitudId = 0;
+    private bool _tieneDatosFacturacionPrevios = false;
+
+    // Datos de facturación
+    private DatosFacturacionModel _datosFacturacion = new();
+
+    // Datos de la nota
+    private string _folio = "";
+    private decimal _total = 0;
+    private string _usoCFDI = "";
+
+    private class DatosFacturacionModel
+    {
+        public string RazonSocial { get; set; } = "";
+        public string RFC { get; set; } = "";
+        public string Calle { get; set; } = "";
+        public string Numero { get; set; } = "";
+        public string Colonia { get; set; } = "";
+        public string CodigoPostal { get; set; } = "";
+        public string Telefono { get; set; } = "";
+        public string Correo { get; set; } = "";
+        public string RegimenFiscal { get; set; } = "";
+    }
+
+    private async Task OnRfcKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_rfc))
+        {
+            await BuscarCliente();
+        }
+    }
+
+    private async Task BuscarCliente()
+    {
+        if (string.IsNullOrWhiteSpace(_rfc))
+        {
+            Snackbar.Add("Por favor ingresa un RFC válido", Severity.Warning);
+            return;
+        }
+
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var query = new GetClienteByRFCQuery { RFC = _rfc.ToUpper().Trim() };
+            var cliente = await Mediator.Send(query);
+
+            if (cliente != null)
+            {
+                // Cliente encontrado, cargar sus datos
+                _clienteId = cliente.ClienteID;
+                
+                // Verificar si tiene datos de facturación previos
+                _tieneDatosFacturacionPrevios = cliente.DatosFacturacion != null && 
+                                                !string.IsNullOrWhiteSpace(cliente.DatosFacturacion.RazonSocial);
+                
+                _datosFacturacion = new DatosFacturacionModel
+                {
+                    RazonSocial = cliente.DatosFacturacion?.RazonSocial ?? "",
+                    RFC = cliente.DatosFacturacion?.RFC ?? _rfc.ToUpper().Trim(),
+                    Calle = cliente.DatosFacturacion?.Calle ?? "",
+                    Numero = cliente.DatosFacturacion?.Numero ?? "",
+                    Colonia = cliente.DatosFacturacion?.Colonia ?? "",
+                    CodigoPostal = cliente.DatosFacturacion?.CodigoPostal ?? "",
+                    Telefono = cliente.NumeroTelefono,
+                    Correo = cliente.DatosFacturacion?.Correo ?? "",
+                    RegimenFiscal = cliente.DatosFacturacion?.RegimenFiscal ?? ""
+                };
+                _currentStep = Step.MostrarDatos;
+            }
+            else
+            {
+                // Cliente no encontrado - permitir continuar como nuevo cliente
+                _clienteId = null;
+                _tieneDatosFacturacionPrevios = false;
+                
+                _datosFacturacion = new DatosFacturacionModel
+                {
+                    RazonSocial = "",
+                    RFC = _rfc.ToUpper().Trim(),
+                    Calle = "",
+                    Numero = "",
+                    Colonia = "",
+                    CodigoPostal = "",
+                    Correo = "",
+                    RegimenFiscal = ""
+                };
+                
+                _currentStep = Step.MostrarDatos;
+                Snackbar.Add("RFC no encontrado. Por favor ingresa tus datos para registrarte.", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al buscar cliente: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool ValidarDatosFacturacion()
+    {
+        return !string.IsNullOrWhiteSpace(_datosFacturacion.RazonSocial) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.RFC) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.Calle) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.Telefono) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.Numero) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.Colonia) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.CodigoPostal) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.Correo) &&
+               !string.IsNullOrWhiteSpace(_datosFacturacion.RegimenFiscal);
+    }
+
+    private void ContinuarADatosNota()
+    {
+        if (!ValidarDatosFacturacion())
+        {
+            Snackbar.Add("Por favor completa todos los campos de facturación", Severity.Warning);
+            return;
+        }
+        _currentStep = Step.DatosNota;
+    }
+
+    private void RegresarADatos()
+    {
+        _currentStep = Step.MostrarDatos;
+    }
+
+    private bool ValidarDatosNota()
+    {
+        return !string.IsNullOrWhiteSpace(_folio) &&
+               _total > 0 &&
+               !string.IsNullOrWhiteSpace(_usoCFDI);
+    }
+
+    private async Task EnviarSolicitud()
+    {
+        if (!ValidarDatosNota())
+        {
+            Snackbar.Add("Por favor completa todos los campos de la nota", Severity.Warning);
+            return;
+        }
+
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Si el cliente no existe, lo creamos
+            if (!_clienteId.HasValue)
+            {
+                if (string.IsNullOrWhiteSpace(_datosFacturacion.Telefono))
+                {
+                    Snackbar.Add("El teléfono es requerido para nuevos clientes", Severity.Warning);
+                    _loading = false;
+                    StateHasChanged();
+                    return;
+                }
+
+                var createClienteCommand = new CreateClienteCommand
+                {
+                    NumeroTelefono = _datosFacturacion.Telefono,
+                    Nombre = _datosFacturacion.RazonSocial, // Usamos la Razón Social como nombre inicial
+                    Direccion = $"{_datosFacturacion.Calle} {_datosFacturacion.Numero}, {_datosFacturacion.Colonia}, {_datosFacturacion.CodigoPostal}"
+                };
+
+                _clienteId = await Mediator.Send(createClienteCommand);
+            }
+
+            // Primero actualizar los datos de facturación del cliente
+            var updateCommand = new UpdateClienteDatosFacturacionCommand
+            {
+                ClienteID = _clienteId.Value,
+                RazonSocial = _datosFacturacion.RazonSocial,
+                RFC = _datosFacturacion.RFC,
+                Calle = _datosFacturacion.Calle,
+                Numero = _datosFacturacion.Numero,
+                Colonia = _datosFacturacion.Colonia,
+                CodigoPostal = _datosFacturacion.CodigoPostal,
+                Correo = _datosFacturacion.Correo,
+                RegimenFiscal = _datosFacturacion.RegimenFiscal
+            };
+
+            await Mediator.Send(updateCommand);
+
+            // Luego crear la solicitud de factura
+            var createCommand = new CreateSolicitudFacturaCommand
+            {
+                ClienteID = _clienteId.Value,
+                Folio = _folio,
+                Total = _total,
+                UsoCFDI = _usoCFDI
+            };
+
+            _solicitudId = await Mediator.Send(createCommand);
+            _currentStep = Step.Confirmacion;
+            Snackbar.Add("¡Solicitud de factura enviada exitosamente!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al enviar solicitud: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancelar()
+    {
+        _currentStep = Step.IngresarRFC;
+        _rfc = "";
+        _clienteId = null;
+        _tieneDatosFacturacionPrevios = false;
+        _datosFacturacion = new DatosFacturacionModel();
+        _folio = "";
+        _total = 0;
+        _usoCFDI = "";
+    }
+
+    private void NuevaSolicitud()
+    {
+        Cancelar();
+    }
+
+    // Catálogos
+    public static class RegimenFiscalCatalog
+    {
+        public static Dictionary<string, string> Regimenes = new()
+        {
+            { "601", "General de Ley Personas Morales" },
+            { "603", "Personas Morales con Fines no Lucrativos" },
+            { "605", "Sueldos y Salarios e Ingresos Asimilados a Salarios" },
+            { "606", "Arrendamiento" },
+            { "607", "Régimen de Enajenación o Adquisición de Bienes" },
+            { "608", "Demás ingresos" },
+            { "610", "Residentes en el Extranjero sin Establecimiento Permanente en México" },
+            { "611", "Ingresos por Dividendos (socios y accionistas)" },
+            { "612", "Personas Físicas con Actividades Empresariales y Profesionales" },
+            { "614", "Ingresos por intereses" },
+            { "615", "Régimen de los ingresos por obtención de premios" },
+            { "616", "Sin obligaciones fiscales" },
+            { "620", "Sociedades Cooperativas de Producción que optan por diferir sus ingresos" },
+            { "621", "Incorporación Fiscal" },
+            { "622", "Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras" },
+            { "623", "Opcional para Grupos de Sociedades" },
+            { "624", "Coordinados" },
+            { "625", "Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas" },
+            { "626", "Régimen Simplificado de Confianza" }
+        };
+    }
+
+    public static class UsoCFDICatalog
+    {
+        public static Dictionary<string, string> Usos = new()
+        {
+            { "G01", "Adquisición de mercancías" },
+            { "G02", "Devoluciones, descuentos o bonificaciones" },
+            { "G03", "Gastos en general" },
+            { "I01", "Construcciones" },
+            { "I02", "Mobiliario y equipo de oficina por inversiones" },
+            { "I03", "Equipo de transporte" },
+            { "I04", "Equipo de cómputo y accesorios" },
+            { "I05", "Dados, troqueles, moldes, matrices y herramental" },
+            { "I06", "Comunicaciones telefónicas" },
+            { "I07", "Comunicaciones satelitales" },
+            { "I08", "Otra maquinaria y equipo" },
+            { "D01", "Honorarios médicos, dentales y gastos hospitalarios" },
+            { "D02", "Gastos médicos por incapacidad o discapacidad" },
+            { "D03", "Gastos funerales" },
+            { "D04", "Donativos" },
+            { "D05", "Intereses reales efectivamente pagados por créditos hipotecarios (casa habitación)" },
+            { "D06", "Aportaciones voluntarias al SAR" },
+            { "D07", "Primas por seguros de gastos médicos" },
+            { "D08", "Gastos de transportación escolar obligatoria" },
+            { "D09", "Depósitos en cuentas para el ahorro, primas que tengan como base planes de pensiones" },
+            { "D10", "Pagos por servicios educativos (colegiaturas)" },
+            { "S01", "Sin efectos fiscales" },
+            { "CP01", "Pagos" },
+            { "CN01", "Nómina" }
+        };
+    }
+}

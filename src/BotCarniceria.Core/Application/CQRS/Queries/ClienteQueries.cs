@@ -26,3 +26,8 @@ public class GetClienteByIdQuery : IRequest<ClienteDto?>
         Id = id;
     }
 }
+
+public class GetClienteByRFCQuery : IRequest<ClienteDto?>
+{
+    public string RFC { get; set; } = string.Empty;
+}
