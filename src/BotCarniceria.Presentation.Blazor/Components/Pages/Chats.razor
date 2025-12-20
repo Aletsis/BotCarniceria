@@ -5,7 +5,7 @@
 @using MediatR
 @using Microsoft.AspNetCore.SignalR.Client
 @using BotCarniceria.Presentation.Blazor.Components.Pages.ChatComponents
-@attribute [Authorize(Roles = "admin,supervisor,editor")]
+@attribute [Authorize(Roles = "admin,supervisor,editor,viewer")]
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation

@@ -1,14 +1,65 @@
-﻿<MudNavMenu>
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+<MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Inicio</MudNavLink>
-    <MudNavLink Href="chats" Icon="@Icons.Material.Filled.Chat">Chats</MudNavLink>
-    <MudNavLink Href="pedidos" Icon="@Icons.Material.Filled.ShoppingCart">Pedidos</MudNavLink>
-    <MudNavLink Href="facturas" Icon="@Icons.Material.Filled.Receipt">Facturas</MudNavLink>
-    <MudNavLink Href="clientes" Icon="@Icons.Material.Filled.People">Clientes</MudNavLink>
-    <MudNavLink Href="conversaciones" Icon="@Icons.Material.Filled.History">Conversaciones</MudNavLink>
     
-    <MudNavGroup Title="Administración" Icon="@Icons.Material.Filled.Settings" Expanded="false">
-        <MudNavLink Href="usuarios" Icon="@Icons.Material.Filled.SupervisedUserCircle">Usuarios</MudNavLink>
-        <MudNavLink Href="configuraciones" Icon="@Icons.Material.Filled.Tune">Configuraciones</MudNavLink>
-    </MudNavGroup>
+    @* Todos los roles pueden ver Chats *@
+    <MudNavLink Href="chats" Icon="@Icons.Material.Filled.Chat">Chats</MudNavLink>
+    
+    @* Editor y superiores pueden ver Pedidos *@
+    @if (_isAdmin || _isSupervisor || _isEditor)
+    {
+        <MudNavLink Href="pedidos" Icon="@Icons.Material.Filled.ShoppingCart">Pedidos</MudNavLink>
+    }
+    
+    @* Supervisor y Admin pueden ver Facturas *@
+    @if (_isAdmin || _isSupervisor)
+    {
+        <MudNavLink Href="facturas" Icon="@Icons.Material.Filled.Receipt">Facturas</MudNavLink>
+    }
+    
+    @* Supervisor y Admin pueden ver Clientes *@
+    @if (_isAdmin || _isSupervisor)
+    {
+        <MudNavLink Href="clientes" Icon="@Icons.Material.Filled.People">Clientes</MudNavLink>
+    }
+    
+    @* Solo Admin puede ver Conversaciones *@
+    @if (_isAdmin)
+    {
+        <MudNavLink Href="conversaciones" Icon="@Icons.Material.Filled.History">Conversaciones</MudNavLink>
+    }
+    
+    @* Solo Admin puede ver el grupo de Administración *@
+    @if (_isAdmin)
+    {
+        <MudNavGroup Title="Administración" Icon="@Icons.Material.Filled.Settings" Expanded="false">
+            <MudNavLink Href="usuarios" Icon="@Icons.Material.Filled.SupervisedUserCircle">Usuarios</MudNavLink>
+            <MudNavLink Href="configuraciones" Icon="@Icons.Material.Filled.Tune">Configuraciones</MudNavLink>
+        </MudNavGroup>
+    }
 </MudNavMenu>
 
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+    
+    private bool _isAdmin = false;
+    private bool _isSupervisor = false;
+    private bool _isEditor = false;
+    private bool _isViewer = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask != null)
+        {
+            var authState = await AuthenticationStateTask;
+            var user = authState.User;
+            
+            _isAdmin = user.IsInRole("admin");
+            _isSupervisor = user.IsInRole("supervisor");
+            _isEditor = user.IsInRole("editor");
+            _isViewer = user.IsInRole("viewer");
+        }
+    }
+}
