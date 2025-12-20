@@ -35,8 +35,10 @@ public static class DependencyInjection
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<ISolicitudFacturaRepository, SolicitudFacturaRepository>();
         
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 
         // Caching
         services.AddMemoryCache();

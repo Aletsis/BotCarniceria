@@ -69,6 +69,7 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.OwnsOne(c => c.DatosFacturacion, df =>
         {
             df.Property(d => d.RazonSocial).HasMaxLength(200).HasColumnName("Facturacion_RazonSocial");
+            df.Property(d => d.RFC).HasMaxLength(13).HasColumnName("Facturacion_RFC");
             df.Property(d => d.Calle).HasMaxLength(150).HasColumnName("Facturacion_Calle");
             df.Property(d => d.Numero).HasMaxLength(50).HasColumnName("Facturacion_Numero");
             df.Property(d => d.Colonia).HasMaxLength(100).HasColumnName("Facturacion_Colonia");
@@ -78,3 +79,56 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         });
     }
 }
+
+public class SolicitudFacturaConfiguration : IEntityTypeConfiguration<SolicitudFactura>
+{
+    public void Configure(EntityTypeBuilder<SolicitudFactura> builder)
+    {
+        builder.ToTable("SolicitudesFactura");
+
+        builder.HasKey(s => s.SolicitudFacturaID);
+
+        builder.Property(s => s.Folio)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.HasIndex(s => s.Folio);
+
+        builder.Property(s => s.Total)
+            .HasColumnType("decimal(18,2)")
+            .IsRequired();
+
+        builder.Property(s => s.UsoCFDI)
+            .HasMaxLength(10)
+            .IsRequired();
+
+        builder.Property(s => s.Estado)
+            .HasConversion<string>()
+            .IsRequired();
+
+        builder.Property(s => s.FechaSolicitud)
+            .HasDefaultValueSql("GETDATE()");
+
+        builder.Property(s => s.Notas)
+            .HasMaxLength(500);
+
+        // Owned entity for DatosFacturacion
+        builder.OwnsOne(s => s.DatosFacturacion, df =>
+        {
+            df.Property(d => d.RazonSocial).HasMaxLength(200).HasColumnName("DatosFacturacion_RazonSocial").IsRequired();
+            df.Property(d => d.RFC).HasMaxLength(13).HasColumnName("DatosFacturacion_RFC").IsRequired();
+            df.Property(d => d.Calle).HasMaxLength(150).HasColumnName("DatosFacturacion_Calle").IsRequired();
+            df.Property(d => d.Numero).HasMaxLength(50).HasColumnName("DatosFacturacion_Numero").IsRequired();
+            df.Property(d => d.Colonia).HasMaxLength(100).HasColumnName("DatosFacturacion_Colonia").IsRequired();
+            df.Property(d => d.CodigoPostal).HasMaxLength(10).HasColumnName("DatosFacturacion_CodigoPostal").IsRequired();
+            df.Property(d => d.Correo).HasMaxLength(100).HasColumnName("DatosFacturacion_Correo").IsRequired();
+            df.Property(d => d.RegimenFiscal).HasMaxLength(100).HasColumnName("DatosFacturacion_RegimenFiscal").IsRequired();
+        });
+
+        builder.HasOne(s => s.Cliente)
+            .WithMany()
+            .HasForeignKey(s => s.ClienteID)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+

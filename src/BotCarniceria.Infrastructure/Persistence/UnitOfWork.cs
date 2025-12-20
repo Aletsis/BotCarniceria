@@ -15,6 +15,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
     public IMessageRepository Messages { get; }
     public IConfiguracionRepository Settings { get; }
     public IUsuarioRepository Users { get; }
+    public ISolicitudFacturaRepository SolicitudesFactura { get; }
 
     public UnitOfWork(
         BotCarniceriaDbContext context,
@@ -23,7 +24,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         ISessionRepository sessionRepository,
         IMessageRepository messageRepository,
         IConfiguracionRepository settingsRepository,
-        IUsuarioRepository usuarioRepository)
+        IUsuarioRepository usuarioRepository,
+        ISolicitudFacturaRepository solicitudFacturaRepository)
     {
         _context = context;
         Orders = orderRepository;
@@ -32,6 +34,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         Messages = messageRepository;
         Settings = settingsRepository;
         Users = usuarioRepository;
+        SolicitudesFactura = solicitudFacturaRepository;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -1,0 +1,317 @@
+@page "/facturas"
+@using BotCarniceria.Core.Application.CQRS.Queries
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using BotCarniceria.Core.Application.DTOs
+@using MediatR
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize(Roles = "admin,supervisor")]
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+
+<AuthorizeView Roles="admin,supervisor">
+    <Authorized>
+        <PageTitle>Solicitudes de Factura</PageTitle>
+
+        <MudText Typo="Typo.h4" GutterBottom="true">Gestión de Solicitudes de Factura</MudText>
+
+        <!-- Filtros -->
+        <MudPaper Class="pa-4 mb-4">
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField @bind-Value="_searchString" 
+                                  Label="Buscar" 
+                                  Placeholder="Folio, Cliente, Teléfono..."
+                                  Adornment="Adornment.Start" 
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  OnKeyUp="@(() => ApplyFilters())" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSelect @bind-Value="_filtroEstado" Label="Estado" OnChange="@(() => ApplyFilters())">
+                        <MudSelectItem Value="@("Todos")">Todos</MudSelectItem>
+                        <MudSelectItem Value="@("Pendiente")">Pendiente</MudSelectItem>
+                        <MudSelectItem Value="@("EnProceso")">En Proceso</MudSelectItem>
+                        <MudSelectItem Value="@("Completada")">Completada</MudSelectItem>
+                        <MudSelectItem Value="@("Rechazada")">Rechazada</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudDatePicker @bind-Date="_fechaFiltro" 
+                                   Label="Fecha de Solicitud" 
+                                   Clearable="true"
+                                   OnChange="@(() => ApplyFilters())" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Tabla de Solicitudes -->
+        <MudTable Items="@_pagedSolicitudes" 
+                  Loading="@_loading" 
+                  Hover="true" 
+                  Striped="true" 
+                  Dense="true"
+                  FixedHeader="true"
+                  Height="calc(100vh - 350px)">
+            <HeaderContent>
+                <MudTh>Folio Solicitud</MudTh>
+                <MudTh>Cliente</MudTh>
+                <MudTh>Folio Nota</MudTh>
+                <MudTh>Total</MudTh>
+                <MudTh>Razón Social</MudTh>
+                <MudTh>RFC / Régimen</MudTh>
+                <MudTh>Uso CFDI</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh>Fecha Solicitud</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="solicitud">
+                <MudTd DataLabel="Folio Solicitud">#@solicitud.SolicitudFacturaID</MudTd>
+                <MudTd DataLabel="Cliente">
+                    <MudText Typo="Typo.body2">@solicitud.ClienteNombre</MudText>
+                    <MudText Typo="Typo.caption">@solicitud.ClienteTelefono</MudText>
+                </MudTd>
+                <MudTd DataLabel="Folio Nota">@solicitud.Folio</MudTd>
+                <MudTd DataLabel="Total">$@solicitud.Total.ToString("N2")</MudTd>
+                <MudTd DataLabel="Razón Social">@solicitud.RazonSocial</MudTd>
+                <MudTd DataLabel="RFC / Régimen">
+                    <MudText Typo="Typo.body2">@solicitud.RFC</MudText>
+                    <MudText Typo="Typo.caption">@solicitud.RegimenFiscal - @solicitud.RegimenFiscalDescripcion</MudText>
+                </MudTd>
+                <MudTd DataLabel="Uso CFDI">
+                    <MudText Typo="Typo.body2">@solicitud.UsoCFDI</MudText>
+                    <MudText Typo="Typo.caption">@solicitud.UsoCFDIDescripcion</MudText>
+                </MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip T="string" Color="@GetEstadoColor(solicitud.Estado)" Size="Size.Small">
+                        @GetEstadoDisplayName(solicitud.Estado)
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Fecha Solicitud">
+                    @solicitud.FechaSolicitud.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                        <MudMenuItem OnClick="@(() => VerDetalles(solicitud))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-2" />
+                            Ver Detalles
+                        </MudMenuItem>
+                        @if (solicitud.Estado == "Pendiente")
+                        {
+                            <MudMenuItem OnClick="@(() => CambiarEstado(solicitud, "EnProceso"))">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Class="mr-2" />
+                                Marcar En Proceso
+                            </MudMenuItem>
+                        }
+                        @if (solicitud.Estado == "EnProceso")
+                        {
+                            <MudMenuItem OnClick="@(() => CambiarEstado(solicitud, "Completada"))">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-2" />
+                                Marcar Completada
+                            </MudMenuItem>
+                        }
+                        @if (solicitud.Estado != "Rechazada" && solicitud.Estado != "Completada")
+                        {
+                            <MudMenuItem OnClick="@(() => CambiarEstado(solicitud, "Rechazada"))">
+                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Class="mr-2" />
+                                Rechazar
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText>No se encontraron solicitudes de factura.</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Cargando solicitudes...</MudText>
+            </LoadingContent>
+        </MudTable>
+
+        <MudText Typo="Typo.caption" Class="mt-2">
+            Total de solicitudes: @_totalSolicitudes
+        </MudText>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">No tienes permisos para ver esta página.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private bool _loading = true;
+    private List<SolicitudFacturaDto> _allSolicitudes = new();
+    private IEnumerable<SolicitudFacturaDto> _pagedSolicitudes = new List<SolicitudFacturaDto>();
+    private int _totalSolicitudes = 0;
+
+    // Filtros
+    private string _searchString = "";
+    private string _filtroEstado = "Todos";
+    private DateTime? _fechaFiltro = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var query = new GetAllSolicitudesFacturaQuery();
+            _allSolicitudes = await Mediator.Send(query);
+
+            ApplyFiltersLocal();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar solicitudes: {ex.Message}", Severity.Error);
+            _allSolicitudes = new List<SolicitudFacturaDto>();
+            _pagedSolicitudes = new List<SolicitudFacturaDto>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        ApplyFiltersLocal();
+        StateHasChanged();
+    }
+
+    private void ApplyFiltersLocal()
+    {
+        var filtered = _allSolicitudes.AsEnumerable();
+
+        // Filtro por fecha
+        if (_fechaFiltro.HasValue)
+        {
+            filtered = filtered.Where(s => s.FechaSolicitud.Date == _fechaFiltro.Value.Date);
+        }
+
+        // Filtro por búsqueda
+        if (!string.IsNullOrWhiteSpace(_searchString))
+        {
+            var search = _searchString.ToLower();
+            filtered = filtered.Where(s =>
+                s.Folio.ToLower().Contains(search) ||
+                s.ClienteNombre.ToLower().Contains(search) ||
+                s.ClienteTelefono.Contains(search) ||
+                s.RazonSocial.ToLower().Contains(search) ||
+                s.RFC.ToLower().Contains(search) ||
+                s.SolicitudFacturaID.ToString().Contains(search));
+        }
+
+        // Filtro por estado
+        if (_filtroEstado != "Todos")
+        {
+            filtered = filtered.Where(s => s.Estado == _filtroEstado);
+        }
+
+        // Ordenar por fecha descendente (más recientes primero)
+        filtered = filtered.OrderByDescending(s => s.FechaSolicitud);
+
+        _pagedSolicitudes = filtered;
+        _totalSolicitudes = filtered.Count();
+    }
+
+    private async Task CambiarEstado(SolicitudFacturaDto solicitud, string nuevoEstado)
+    {
+        try
+        {
+            bool? result = await DialogService.ShowMessageBox(
+                "Confirmar Cambio de Estado",
+                $"¿Está seguro de cambiar el estado de la solicitud #{solicitud.SolicitudFacturaID} a {GetEstadoDisplayName(nuevoEstado)}?",
+                yesText: "Sí", cancelText: "Cancelar");
+
+            if (result != true)
+            {
+                return;
+            }
+
+            var command = new UpdateSolicitudFacturaEstadoCommand
+            {
+                SolicitudFacturaID = solicitud.SolicitudFacturaID,
+                NuevoEstado = nuevoEstado
+            };
+
+            var updateResult = await Mediator.Send(command);
+
+            if (updateResult)
+            {
+                solicitud.Estado = nuevoEstado;
+                Snackbar.Add($"Estado de la solicitud #{solicitud.SolicitudFacturaID} actualizado a: {GetEstadoDisplayName(nuevoEstado)}", Severity.Success);
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("Error al actualizar el estado de la solicitud", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void VerDetalles(SolicitudFacturaDto solicitud)
+    {
+        var message = "<strong>Solicitud #" + solicitud.SolicitudFacturaID + "</strong><br/><br/>" +
+            "<strong>Cliente:</strong><br/>" +
+            "- Nombre: " + solicitud.ClienteNombre + "<br/>" +
+            "- Teléfono: " + solicitud.ClienteTelefono + "<br/><br/>" +
+            "<strong>Datos de la Nota:</strong><br/>" +
+            "- Folio: " + solicitud.Folio + "<br/>" +
+            "- Total: $" + solicitud.Total.ToString("N2") + "<br/><br/>" +
+            "<strong>Datos de Facturación:</strong><br/>" +
+            "- Razón Social: " + solicitud.RazonSocial + "<br/>" +
+            "- RFC: " + solicitud.RFC + "<br/>" +
+            "- Dirección: " + solicitud.Calle + " " + solicitud.Numero + ", " + solicitud.Colonia + "<br/>" +
+            "- CP: " + solicitud.CodigoPostal + "<br/>" +
+            "- Correo: " + solicitud.Correo + "<br/>" +
+            "- Régimen Fiscal: " + solicitud.RegimenFiscal + " - " + solicitud.RegimenFiscalDescripcion + "<br/><br/>" +
+            "<strong>Uso CFDI:</strong><br/>" +
+            solicitud.UsoCFDI + " - " + solicitud.UsoCFDIDescripcion + "<br/><br/>" +
+            "<strong>Estado:</strong> " + GetEstadoDisplayName(solicitud.Estado) + "<br/>" +
+            "<strong>Fecha Solicitud:</strong> " + solicitud.FechaSolicitud.ToLocalTime().ToString("dd/MM/yyyy HH:mm") + "<br/>" +
+            (solicitud.FechaProcesada.HasValue ? "<strong>Fecha Procesada:</strong> " + solicitud.FechaProcesada.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") + "<br/>" : "") +
+            (!string.IsNullOrEmpty(solicitud.Notas) ? "<strong>Notas:</strong> " + solicitud.Notas : "");
+
+        DialogService.ShowMessageBox(
+            "Detalles de Solicitud #" + solicitud.SolicitudFacturaID,
+            (MarkupString)message,
+            yesText: "Cerrar");
+    }
+
+    private string GetEstadoDisplayName(string estado)
+    {
+        return estado switch
+        {
+            "Pendiente" => "Pendiente",
+            "EnProceso" => "En Proceso",
+            "Completada" => "Completada",
+            "Rechazada" => "Rechazada",
+            _ => estado
+        };
+    }
+
+    private Color GetEstadoColor(string estado)
+    {
+        return estado switch
+        {
+            "Pendiente" => Color.Warning,
+            "EnProceso" => Color.Info,
+            "Completada" => Color.Success,
+            "Rechazada" => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

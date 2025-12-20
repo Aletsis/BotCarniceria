@@ -23,6 +23,8 @@ public class BotCarniceriaDbContext : DbContext
     public DbSet<Mensaje> Mensajes { get; set; } = null!;
     public DbSet<Usuario> Usuarios { get; set; } = null!;
     public DbSet<Configuracion> Configuraciones { get; set; } = null!;
+    public DbSet<SolicitudFactura> SolicitudesFactura { get; set; } = null!;
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

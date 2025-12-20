@@ -5,6 +5,7 @@ namespace BotCarniceria.Core.Domain.ValueObjects;
 public class DatosFacturacion : ValueObject
 {
     public string RazonSocial { get; private set; }
+    public string RFC { get; private set; }
     public string Calle { get; private set; }
     public string Numero { get; private set; }
     public string Colonia { get; private set; }
@@ -15,6 +16,7 @@ public class DatosFacturacion : ValueObject
     private DatosFacturacion() 
     {
         RazonSocial = string.Empty;
+        RFC = string.Empty;
         Calle = string.Empty;
         Numero = string.Empty;
         Colonia = string.Empty;
@@ -23,9 +25,10 @@ public class DatosFacturacion : ValueObject
         RegimenFiscal = string.Empty;
     }
 
-    public DatosFacturacion(string razonSocial, string calle, string numero, string colonia, string codigoPostal, string correo, string regimenFiscal)
+    public DatosFacturacion(string razonSocial, string rfc, string calle, string numero, string colonia, string codigoPostal, string correo, string regimenFiscal)
     {
         RazonSocial = razonSocial;
+        RFC = rfc;
         Calle = calle;
         Numero = numero;
         Colonia = colonia;
@@ -37,6 +40,7 @@ public class DatosFacturacion : ValueObject
     protected override IEnumerable<object> GetEqualityComponents()
     {
         yield return RazonSocial;
+        yield return RFC;
         yield return Calle;
         yield return Numero;
         yield return Colonia;

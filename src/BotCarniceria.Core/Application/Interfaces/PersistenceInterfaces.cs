@@ -49,6 +49,12 @@ public interface IUsuarioRepository : IRepository<Usuario>
     Task<Usuario?> GetByUsernameAsync(string username);
 }
 
+public interface ISolicitudFacturaRepository : IRepository<SolicitudFactura>
+{
+    Task<List<SolicitudFactura>> GetByClienteIdAsync(int clienteId);
+    Task<SolicitudFactura?> GetByFolioAsync(string folio);
+}
+
 public interface IUnitOfWork
 {
     IOrderRepository Orders { get; }
@@ -57,6 +63,7 @@ public interface IUnitOfWork
     IMessageRepository Messages { get; }
     IConfiguracionRepository Settings { get; }
     IUsuarioRepository Users { get; }
+    ISolicitudFacturaRepository SolicitudesFactura { get; }
     public IConfiguracionRepository Configuraciones => Settings; // Alias for ease of use
 
     

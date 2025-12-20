@@ -33,6 +33,7 @@ public class StateHandlerFactory : IStateHandlerFactory
             ConversationState.BILLING_WARNING => _serviceProvider.GetRequiredService<BillingStateHandler>(),
             ConversationState.BILLING_CHECK_DATA => _serviceProvider.GetRequiredService<BillingStateHandler>(), // Though logic likely in Menu, handler exists just in case
             ConversationState.BILLING_ASK_RAZON_SOCIAL => _serviceProvider.GetRequiredService<BillingStateHandler>(),
+            ConversationState.BILLING_ASK_RFC => _serviceProvider.GetRequiredService<BillingStateHandler>(),
             ConversationState.BILLING_ASK_CALLE => _serviceProvider.GetRequiredService<BillingStateHandler>(),
             ConversationState.BILLING_ASK_NUMERO => _serviceProvider.GetRequiredService<BillingStateHandler>(),
             ConversationState.BILLING_ASK_COLONIA => _serviceProvider.GetRequiredService<BillingStateHandler>(),

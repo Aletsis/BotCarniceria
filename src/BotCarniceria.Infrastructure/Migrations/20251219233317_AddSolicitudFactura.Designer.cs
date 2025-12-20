@@ -4,6 +4,7 @@ using BotCarniceria.Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BotCarniceria.Infrastructure.Migrations
 {
     [DbContext(typeof(BotCarniceriaDbContext))]
-    partial class BotCarniceriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251219233317_AddSolicitudFactura")]
+    partial class AddSolicitudFactura
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -381,12 +384,6 @@ namespace BotCarniceria.Infrastructure.Migrations
                                 .HasColumnType("nvarchar(50)")
                                 .HasColumnName("Facturacion_Numero");
 
-                            b1.Property<string>("RFC")
-                                .IsRequired()
-                                .HasMaxLength(13)
-                                .HasColumnType("nvarchar(13)")
-                                .HasColumnName("Facturacion_RFC");
-
                             b1.Property<string>("RazonSocial")
                                 .IsRequired()
                                 .HasMaxLength(200)
@@ -463,12 +460,6 @@ namespace BotCarniceria.Infrastructure.Migrations
                                 .HasMaxLength(50)
                                 .HasColumnType("nvarchar(50)")
                                 .HasColumnName("DatosFacturacion_Numero");
-
-                            b1.Property<string>("RFC")
-                                .IsRequired()
-                                .HasMaxLength(13)
-                                .HasColumnType("nvarchar(13)")
-                                .HasColumnName("DatosFacturacion_RFC");
 
                             b1.Property<string>("RazonSocial")
                                 .IsRequired()

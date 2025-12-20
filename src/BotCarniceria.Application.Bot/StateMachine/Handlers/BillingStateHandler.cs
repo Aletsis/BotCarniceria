@@ -5,19 +5,25 @@ using BotCarniceria.Core.Domain.Enums;
 using BotCarniceria.Core.Domain.ValueObjects;
 using BotCarniceria.Core.Application.Specifications;
 using BotCarniceria.Core.Domain.Constants;
+using BotCarniceria.Core.Application.CQRS.Commands;
+using MediatR;
 
 namespace BotCarniceria.Application.Bot.StateMachine.Handlers;
+
 
 public class BillingStateHandler : IConversationStateHandler
 {
     private readonly IWhatsAppService _whatsAppService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
-    public BillingStateHandler(IWhatsAppService whatsAppService, IUnitOfWork unitOfWork)
+    public BillingStateHandler(IWhatsAppService whatsAppService, IUnitOfWork unitOfWork, IMediator mediator)
     {
         _whatsAppService = whatsAppService;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
+
 
     public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
     {
@@ -65,6 +71,13 @@ public class BillingStateHandler : IConversationStateHandler
                 UpdateBillingData(cliente, razonSocial: newRazon);
                 await _unitOfWork.SaveChangesAsync();
 
+                await _whatsAppService.SendTextMessageAsync(phoneNumber, "🆔 *RFC:*\nPor favor, ingresa tu RFC (Registro Federal de Contribuyentes):");
+                session.CambiarEstado(ConversationState.BILLING_ASK_RFC);
+                break;
+
+            case ConversationState.BILLING_ASK_RFC:
+                UpdateBillingData(cliente, rfc: messageContent);
+                await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "🏢 *Calle:*\nPor favor, ingresa la calle:");
                 session.CambiarEstado(ConversationState.BILLING_ASK_CALLE);
                 break;
@@ -177,10 +190,41 @@ public class BillingStateHandler : IConversationStateHandler
                 session.SetFacturaTemp_UsoCFDI(messageContent);
                 await _unitOfWork.SaveChangesAsync();
 
-                // FINALIZATION
-                await NotifySupervisors(cliente, session);
+                // Create the invoice request
+                try
+                {
+                    // Parse total
+                    if (!decimal.TryParse(session.FacturaTemp_Total, out var total))
+                    {
+                        await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Error: El total ingresado no es válido. Por favor, contacta a soporte.");
+                        session.CambiarEstado(ConversationState.MENU);
+                        break;
+                    }
 
-                await _whatsAppService.SendTextMessageAsync(phoneNumber, "✅ *Solicitud Recibida*\n\nHemos recibido tu solicitud. Tu factura será enviada en un plazo máximo de 24 hrs. ¡Gracias por tu compra! 🥩");
+                    var command = new CreateSolicitudFacturaCommand
+                    {
+                        ClienteID = cliente.ClienteID,
+                        Folio = session.FacturaTemp_Folio ?? "",
+                        Total = total,
+                        UsoCFDI = messageContent,
+                        Notas = null
+                    };
+
+                    var solicitudId = await _mediator.Send(command);
+
+                    // FINALIZATION - Notify supervisors
+                    await NotifySupervisors(cliente, session);
+
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, 
+                        $"✅ *Solicitud Recibida*\n\n" +
+                        $"Hemos registrado tu solicitud de factura con el folio #{solicitudId}.\n\n" +
+                        $"Tu factura será enviada en un plazo máximo de 24 hrs. ¡Gracias por tu compra! 🥩");
+                }
+                catch (Exception ex)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, 
+                        $"❌ Error al procesar tu solicitud: {ex.Message}\n\nPor favor, contacta a soporte.");
+                }
                 
                 // Return to menu or start
                 session.CambiarEstado(ConversationState.MENU);
@@ -194,11 +238,12 @@ public class BillingStateHandler : IConversationStateHandler
         }
     }
 
-    private void UpdateBillingData(Cliente cliente, string? razonSocial = null, string? calle = null, string? numero = null, string? colonia = null, string? cp = null, string? correo = null, string? regimen = null)
+    private void UpdateBillingData(Cliente cliente, string? razonSocial = null, string? rfc = null, string? calle = null, string? numero = null, string? colonia = null, string? cp = null, string? correo = null, string? regimen = null)
     {
         var current = cliente.DatosFacturacion;
         
         var newRazon = razonSocial ?? current?.RazonSocial ?? "";
+        var newRfc = rfc ?? current?.RFC ?? "";
         var newCalle = calle ?? current?.Calle ?? "";
         var newNumero = numero ?? current?.Numero ?? "";
         var newColonia = colonia ?? current?.Colonia ?? "";
@@ -206,7 +251,7 @@ public class BillingStateHandler : IConversationStateHandler
         var newCorreo = correo ?? current?.Correo ?? "";
         var newRegimen = regimen ?? current?.RegimenFiscal ?? "";
 
-        var newData = new DatosFacturacion(newRazon, newCalle, newNumero, newColonia, newCp, newCorreo, newRegimen);
+        var newData = new DatosFacturacion(newRazon, newRfc, newCalle, newNumero, newColonia, newCp, newCorreo, newRegimen);
         cliente.UpdateDatosFacturacion(newData);
     }
 
@@ -221,6 +266,7 @@ public class BillingStateHandler : IConversationStateHandler
 
          var msg = "🧾 *Confirma tus Datos de Facturación*\n\n" +
                   $"🏢 *Razón Social:* {data.RazonSocial}\n" +
+                  $"🆔 *RFC:* {data.RFC}\n" +
                   $"📍 *Calle:* {data.Calle}\n" +
                   $"🔢 *Número:* {data.Numero}\n" +
                   $"🏘️ *Colonia:* {data.Colonia}\n" +
@@ -258,6 +304,7 @@ public class BillingStateHandler : IConversationStateHandler
                       $"👤 *Cliente:* {cliente.Nombre} ({cliente.NumeroTelefono})\n\n" +
                       "🧾 *Datos de Facturación:*\n" +
                       $"🏢 Razón Social: {data.RazonSocial}\n" +
+                      $"🆔 RFC: {data.RFC}\n" +
                       $"📍 Calle: {data.Calle}\n" +
                       $"🔢 Número: {data.Numero}\n" +
                       $"🏘️ Colonia: {data.Colonia}\n" +

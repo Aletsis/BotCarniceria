@@ -93,3 +93,36 @@ public class MessageRepository : Repository<Mensaje>, IMessageRepository
             .ToListAsync();
     }
 }
+
+public class SolicitudFacturaRepository : Repository<SolicitudFactura>, ISolicitudFacturaRepository
+{
+    public SolicitudFacturaRepository(BotCarniceriaDbContext context) : base(context)
+    {
+    }
+
+    public async Task<List<SolicitudFactura>> GetByClienteIdAsync(int clienteId)
+    {
+        return await _context.SolicitudesFactura
+            .Include(s => s.Cliente)
+            .Where(s => s.ClienteID == clienteId)
+            .OrderByDescending(s => s.FechaSolicitud)
+            .ToListAsync();
+    }
+
+    public async Task<SolicitudFactura?> GetByFolioAsync(string folio)
+    {
+        if (string.IsNullOrWhiteSpace(folio)) return null;
+
+        return await _context.SolicitudesFactura
+            .Include(s => s.Cliente)
+            .FirstOrDefaultAsync(s => s.Folio == folio);
+    }
+
+    public new async Task<SolicitudFactura?> GetByIdAsync(object id)
+    {
+        return await _context.SolicitudesFactura
+            .Include(s => s.Cliente)
+            .FirstOrDefaultAsync(s => s.SolicitudFacturaID == (long)id);
+    }
+}
+
