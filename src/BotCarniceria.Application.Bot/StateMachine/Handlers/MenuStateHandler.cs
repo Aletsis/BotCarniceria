@@ -4,6 +4,7 @@ using BotCarniceria.Core.Application.Specifications;
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
 using BotCarniceria.Core.Domain.Constants;
+using BotCarniceria.Core.Domain.Services;
 
 
 namespace BotCarniceria.Application.Bot.StateMachine.Handlers;
@@ -12,12 +13,16 @@ public class MenuStateHandler : IConversationStateHandler
 {
     private readonly IWhatsAppService _whatsAppService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IDateTimeProvider _dateTimeProvider;
+    
     public MenuStateHandler(
         IWhatsAppService whatsAppService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IDateTimeProvider dateTimeProvider)
     {
         _whatsAppService = whatsAppService;
         _unitOfWork = unitOfWork;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
@@ -51,7 +56,7 @@ public class MenuStateHandler : IConversationStateHandler
             }
 
             var warningTime = new TimeSpan(warningHour, warningMinute, 0);
-            var currentTime = DateTime.Now.TimeOfDay;
+            var currentTime = _dateTimeProvider.LocalTimeOfDay;
 
             if (currentTime >= warningTime)
             {

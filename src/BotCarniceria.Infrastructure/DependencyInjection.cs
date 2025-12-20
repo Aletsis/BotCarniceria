@@ -1,6 +1,7 @@
 using BotCarniceria.Core.Application.Interfaces;
 using BotCarniceria.Core.Application.Interfaces.BackgroundJobs;
 using BotCarniceria.Core.Application.Interfaces.BackgroundJobs.Jobs;
+using BotCarniceria.Core.Domain.Services;
 using BotCarniceria.Infrastructure.BackgroundJobs;
 using BotCarniceria.Infrastructure.BackgroundJobs.Configuration;
 using BotCarniceria.Infrastructure.BackgroundJobs.Handlers;
@@ -72,6 +73,7 @@ public static class DependencyInjection
 
         services.AddScoped<IPrintingService, Services.External.Printing.PrintingService>();
         services.AddScoped<IPasswordHasher, Services.PasswordHasher>();
+        services.AddScoped<IDateTimeProvider, Services.DateTimeProvider>();
 
         // Background Jobs with Hangfire
         services.AddBackgroundJobs(configuration);

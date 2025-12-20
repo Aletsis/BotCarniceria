@@ -2,6 +2,7 @@
 @using BotCarniceria.Core.Application.CQRS.Queries
 @using BotCarniceria.Core.Application.CQRS.Commands
 @using BotCarniceria.Core.Application.DTOs
+@using BotCarniceria.Shared.Helpers
 @using MediatR
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
@@ -91,7 +92,7 @@
                     </MudChip>
                 </MudTd>
                 <MudTd DataLabel="Fecha Solicitud">
-                    @solicitud.FechaSolicitud.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    @TimeZoneHelper.ToLocalTime(solicitud.FechaSolicitud).ToString("dd/MM/yyyy HH:mm")
                 </MudTd>
                 <MudTd DataLabel="Acciones">
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
@@ -281,8 +282,8 @@
             "<strong>Uso CFDI:</strong><br/>" +
             solicitud.UsoCFDI + " - " + solicitud.UsoCFDIDescripcion + "<br/><br/>" +
             "<strong>Estado:</strong> " + GetEstadoDisplayName(solicitud.Estado) + "<br/>" +
-            "<strong>Fecha Solicitud:</strong> " + solicitud.FechaSolicitud.ToLocalTime().ToString("dd/MM/yyyy HH:mm") + "<br/>" +
-            (solicitud.FechaProcesada.HasValue ? "<strong>Fecha Procesada:</strong> " + solicitud.FechaProcesada.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") + "<br/>" : "") +
+            "<strong>Fecha Solicitud:</strong> " + TimeZoneHelper.ToLocalTime(solicitud.FechaSolicitud).ToString("dd/MM/yyyy HH:mm") + "<br/>" +
+            (solicitud.FechaProcesada.HasValue ? "<strong>Fecha Procesada:</strong> " + TimeZoneHelper.ToLocalTime(solicitud.FechaProcesada.Value).ToString("dd/MM/yyyy HH:mm") + "<br/>" : "") +
             (!string.IsNullOrEmpty(solicitud.Notas) ? "<strong>Notas:</strong> " + solicitud.Notas : "");
 
         DialogService.ShowMessageBox(

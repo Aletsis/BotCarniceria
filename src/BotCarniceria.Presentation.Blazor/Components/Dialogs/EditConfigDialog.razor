@@ -10,7 +10,23 @@
         <MudTextField Label="Clave" Value="@Config.Clave" ReadOnly="true" />
         <MudTextField Label="Descripción" Value="@Config.Descripcion" ReadOnly="true" Lines="2" />
         
-        @if (IsTimeConfig())
+        
+        @if (IsTimeZoneConfig())
+        {
+            <MudAutocomplete T="string" 
+                             Label="Zona Horaria" 
+                             @bind-Value="newValue" 
+                             SearchFunc="@SearchTimeZones"
+                             ToStringFunc="@(tz => GetTimeZoneDisplayName(tz))"
+                             HelperText="Selecciona la zona horaria del negocio"
+                             Clearable="true">
+                <ItemTemplate Context="item">
+                    <MudText Typo="Typo.body2">@GetTimeZoneDisplayName(item)</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@item</MudText>
+                </ItemTemplate>
+            </MudAutocomplete>
+        }
+        else if (IsTimeConfig())
         {
             <MudTimePicker Label="Valor (Hora)" @bind-Time="timeValue" AmPm="false" Editable="true" 
                            HelperText="Formato 24 horas (HH:mm)" />
@@ -51,6 +67,42 @@
     private bool IsTimeConfig()
     {
         return Config.Clave == BotCarniceria.Core.Domain.Constants.ConfigurationKeys.Orders.LateOrderWarningStartHour;
+    }
+    
+    private bool IsTimeZoneConfig()
+    {
+        return Config.Clave == BotCarniceria.Core.Domain.Constants.ConfigurationKeys.System.TimeZoneId;
+    }
+    
+    private Task<IEnumerable<string>> SearchTimeZones(string value, CancellationToken token)
+    {
+        var allTimeZones = TimeZoneInfo.GetSystemTimeZones()
+            .Select(tz => tz.Id)
+            .ToList();
+            
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<string>>(allTimeZones);
+            
+        var filtered = allTimeZones
+            .Where(tz => 
+                tz.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                GetTimeZoneDisplayName(tz).Contains(value, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+            
+        return Task.FromResult<IEnumerable<string>>(filtered);
+    }
+    
+    private string GetTimeZoneDisplayName(string timeZoneId)
+    {
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return $"{tz.DisplayName} ({tz.Id})";
+        }
+        catch
+        {
+            return timeZoneId;
+        }
     }
 
     void Cancel() => MudDialog.Cancel();

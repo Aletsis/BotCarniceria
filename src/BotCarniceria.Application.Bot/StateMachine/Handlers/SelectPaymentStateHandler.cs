@@ -5,6 +5,7 @@ using BotCarniceria.Core.Application.Interfaces.BackgroundJobs.Jobs;
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
 using BotCarniceria.Core.Application.Specifications;
+using BotCarniceria.Core.Domain.Services;
 using Microsoft.Extensions.Logging;
 
 namespace BotCarniceria.Application.Bot.StateMachine.Handlers;
@@ -16,19 +17,22 @@ public class SelectPaymentStateHandler : IConversationStateHandler
     private readonly IBackgroundJobService _backgroundJobService;
     private readonly IRealTimeNotificationService _notificationService;
     private readonly ILogger<SelectPaymentStateHandler> _logger;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
     public SelectPaymentStateHandler(
         IUnitOfWork unitOfWork,
         IWhatsAppService whatsAppService,
         IBackgroundJobService backgroundJobService,
         IRealTimeNotificationService notificationService,
-        ILogger<SelectPaymentStateHandler> logger)
+        ILogger<SelectPaymentStateHandler> logger,
+        IDateTimeProvider dateTimeProvider)
     {
         _unitOfWork = unitOfWork;
         _whatsAppService = whatsAppService;
         _backgroundJobService = backgroundJobService;
         _notificationService = notificationService;
         _logger = logger;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
@@ -114,7 +118,7 @@ public class SelectPaymentStateHandler : IConversationStateHandler
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, 
                     $"✅ *¡Pedido confirmado!*\n\n" +
                     $"📋 Folio: *{folio}*\n" +
-                    $"📅 Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}\n" +
+                    $"📅 Fecha: {_dateTimeProvider.Now:dd/MM/yyyy HH:mm}\n" +
                     $"💳 Forma de pago: *{formaPago}*\n\n" +
                     $"Tu pedido está en preparación. Te notificaremos cuando esté en camino.\n\n" +
                     $"¡Gracias por tu preferencia! 🥩");

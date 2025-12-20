@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using BotCarniceria.Core.Domain.Enums;
+using BotCarniceria.Core.Domain.Services;
 
 namespace BotCarniceria.Presentation.Blazor.Hubs;
 
@@ -13,10 +14,12 @@ namespace BotCarniceria.Presentation.Blazor.Hubs;
 public class ChatHub : Hub
 {
     private readonly ILogger<ChatHub> _logger;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
-    public ChatHub(ILogger<ChatHub> logger)
+    public ChatHub(ILogger<ChatHub> logger, IDateTimeProvider dateTimeProvider)
     {
         _logger = logger;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     #region Lifecycle Events
@@ -66,7 +69,7 @@ public class ChatHub : Hub
     /// </summary>
     public async Task SendMessage(string user, string message)
     {
-        await Clients.Groups(GetAllRoleGroups()).SendAsync("ReceiveMessage", user, message, DateTime.Now);
+        await Clients.Groups(GetAllRoleGroups()).SendAsync("ReceiveMessage", user, message, _dateTimeProvider.Now);
     }
 
     #endregion
@@ -79,7 +82,7 @@ public class ChatHub : Hub
     public async Task NotifyNewWhatsAppMessage(string phoneNumber, string message, string messageType)
     {
         _logger.LogDebug("Notificando nuevo mensaje de WhatsApp: {PhoneNumber}", phoneNumber);
-        await Clients.Groups(GetAllRoleGroups()).SendAsync("NewWhatsAppMessage", phoneNumber, message, messageType, DateTime.Now);
+        await Clients.Groups(GetAllRoleGroups()).SendAsync("NewWhatsAppMessage", phoneNumber, message, messageType, _dateTimeProvider.Now);
     }
 
     /// <summary>
@@ -101,7 +104,7 @@ public class ChatHub : Hub
     public async Task NotifyOrderStatusChange(string folio, string newStatus)
     {
         _logger.LogDebug("Notificando cambio de estado de pedido: {Folio} -> {Status}", folio, newStatus);
-        await Clients.Groups(GetAllRoleGroups()).SendAsync("OrderStatusChanged", folio, newStatus, DateTime.Now);
+        await Clients.Groups(GetAllRoleGroups()).SendAsync("OrderStatusChanged", folio, newStatus, _dateTimeProvider.Now);
     }
 
     /// <summary>
@@ -123,7 +126,7 @@ public class ChatHub : Hub
     public async Task NotifySessionStateChange(string phoneNumber, string newState)
     {
         _logger.LogDebug("Notificando cambio de estado de sesión: {PhoneNumber} -> {State}", phoneNumber, newState);
-        await Clients.Groups(GetAllRoleGroups()).SendAsync("SessionStateChanged", phoneNumber, newState, DateTime.Now);
+        await Clients.Groups(GetAllRoleGroups()).SendAsync("SessionStateChanged", phoneNumber, newState, _dateTimeProvider.Now);
     }
 
     #endregion
@@ -155,7 +158,7 @@ public class ChatHub : Hub
     /// </summary>
     public async Task SendToConversation(string phoneNumber, string message)
     {
-        await Clients.Group(phoneNumber).SendAsync("ReceiveConversationMessage", phoneNumber, message, DateTime.Now);
+        await Clients.Group(phoneNumber).SendAsync("ReceiveConversationMessage", phoneNumber, message, _dateTimeProvider.Now);
     }
 
     #endregion
@@ -180,7 +183,7 @@ public class ChatHub : Hub
     public async Task NotifyDashboardUpdate()
     {
         _logger.LogDebug("Notificando actualización del dashboard");
-        await Clients.Groups(GetAllRoleGroups()).SendAsync("DashboardUpdate", DateTime.Now);
+        await Clients.Groups(GetAllRoleGroups()).SendAsync("DashboardUpdate", _dateTimeProvider.Now);
     }
 
     #endregion

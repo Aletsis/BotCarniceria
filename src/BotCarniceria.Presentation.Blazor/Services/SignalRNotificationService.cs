@@ -1,4 +1,5 @@
 using BotCarniceria.Core.Application.Interfaces;
+using BotCarniceria.Core.Domain.Services;
 using BotCarniceria.Presentation.Blazor.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -7,10 +8,12 @@ namespace BotCarniceria.Presentation.Blazor.Services;
 public class SignalRNotificationService : IRealTimeNotificationService
 {
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
-    public SignalRNotificationService(IHubContext<ChatHub> hubContext)
+    public SignalRNotificationService(IHubContext<ChatHub> hubContext, IDateTimeProvider dateTimeProvider)
     {
         _hubContext = hubContext;
+        _dateTimeProvider = dateTimeProvider;
     }
     
     // Dashboard roles to notify
@@ -25,7 +28,7 @@ public class SignalRNotificationService : IRealTimeNotificationService
     public async Task NotifyNewMessageAsync(string phoneNumber, string message)
     {
         // Notify dashboard users
-        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("ReceiveMessage", phoneNumber, message, DateTime.Now);
+        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("ReceiveMessage", phoneNumber, message, _dateTimeProvider.Now);
     }
 
     public async Task NotifyOrdersUpdatedAsync()
@@ -36,12 +39,12 @@ public class SignalRNotificationService : IRealTimeNotificationService
     public async Task NotifySessionExpiredAsync(string phoneNumber)
     {
         // Notify dashboard (maybe specific event or just session state change)
-        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("SessionStateChanged", phoneNumber, "EXPIRED", DateTime.Now);
+        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("SessionStateChanged", phoneNumber, "EXPIRED", _dateTimeProvider.Now);
     }
 
     public async Task NotifyOrderPrintedAsync(string folio)
     {
-        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("OrderStatusChanged", folio, "Impreso", DateTime.Now);
+        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("OrderStatusChanged", folio, "Impreso", _dateTimeProvider.Now);
     }
 
     public async Task NotifyUserTypingAsync(string phoneNumber, bool isTyping)
@@ -52,6 +55,6 @@ public class SignalRNotificationService : IRealTimeNotificationService
 
     public async Task NotifyOrderPickedUpAsync(string folio)
     {
-        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("OrderStatusChanged", folio, "Entregado", DateTime.Now);
+        await _hubContext.Clients.Groups(DashboardGroups).SendAsync("OrderStatusChanged", folio, "Entregado", _dateTimeProvider.Now);
     }
 }

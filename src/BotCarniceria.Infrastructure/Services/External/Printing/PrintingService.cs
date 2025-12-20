@@ -3,6 +3,7 @@ using System.Text;
 using BotCarniceria.Core.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using BotCarniceria.Core.Domain.Constants;
+using BotCarniceria.Core.Domain.Services;
 
 namespace BotCarniceria.Infrastructure.Services.External.Printing;
 
@@ -10,11 +11,13 @@ public class PrintingService : IPrintingService
 {
     private readonly ILogger<PrintingService> _logger;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
-    public PrintingService(ILogger<PrintingService> logger, IUnitOfWork unitOfWork)
+    public PrintingService(ILogger<PrintingService> logger, IUnitOfWork unitOfWork, IDateTimeProvider dateTimeProvider)
     {
         _logger = logger;
         _unitOfWork = unitOfWork;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<bool> PrintTicketAsync(string folio, string nombre, string telefono, string direccion, string contenido, string notas)
@@ -72,7 +75,7 @@ public class PrintingService : IPrintingService
                 // Order Info
                 .AlignLeft()
                 .WriteLine($"Folio: {folio}")
-                .WriteLine($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}")
+                .WriteLine($"Fecha: {_dateTimeProvider.Now:dd/MM/yyyy HH:mm}")
                 .WriteSeparator()
                 // Customer Info
                 .WriteLine($"CLIENTE: {nombre}")

@@ -45,5 +45,6 @@ public static class ConfigurationKeys
         public const string MessageRetryCount = "System.MessageRetryCount";
         public const string RetryIntervalSeconds = "System.RetryIntervalSeconds";
         public const string WorkQueueCount = "System.WorkQueueCount";
+        public const string TimeZoneId = "System.TimeZoneId";
     }
 }

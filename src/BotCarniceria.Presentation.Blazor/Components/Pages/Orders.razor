@@ -8,11 +8,13 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
 @implements IAsyncDisposable
+@using BotCarniceria.Core.Domain.Services
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@using BotCarniceria.Shared.Helpers
 @using BotCarniceria.Presentation.Blazor.Components.Orders
 
 <AuthorizeView Roles="admin,supervisor,editor">
@@ -84,7 +86,7 @@
         // Si es editor, establecer fecha de hoy por defecto
         if (_isEditor)
         {
-            _fechaFiltro = DateTime.Today;
+            _fechaFiltro = TimeZoneHelper.Today;
         }
 
         await LoadData();
@@ -168,12 +170,13 @@
         // Filtro por rol: Editor solo ve pedidos del día
         if (_isEditor)
         {
-            filtered = filtered.Where(p => p.Fecha.Date == DateTime.Today);
+            var today = TimeZoneHelper.Today;
+            filtered = filtered.Where(p => TimeZoneHelper.ToLocalTime(p.Fecha).Date == today);
         }
         // Admin y Supervisor pueden filtrar por fecha
         else if (_fechaFiltro.HasValue)
         {
-            filtered = filtered.Where(p => p.Fecha.Date == _fechaFiltro.Value.Date);
+            filtered = filtered.Where(p => TimeZoneHelper.ToLocalTime(p.Fecha).Date == _fechaFiltro.Value.Date);
         }
 
         // Filtro por búsqueda
@@ -290,7 +293,7 @@
             if (result)
             {
                 pedido.EstadoImpresion = true;
-                pedido.FechaImpresion = DateTime.Now;
+                pedido.FechaImpresion = DateTime.UtcNow;
                 Snackbar.Add($"Pedido {pedido.Folio} enviado a impresión", Severity.Success);
             }
             else

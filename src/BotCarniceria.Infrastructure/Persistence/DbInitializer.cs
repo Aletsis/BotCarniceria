@@ -40,6 +40,7 @@ public static class DbInitializer
                 Configuracion.Create(ConfigurationKeys.System.MessageRetryCount, "3", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Numero, "Número de reintentos para envío de mensajes"),
                 Configuracion.Create(ConfigurationKeys.System.RetryIntervalSeconds, "60", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Numero, "Intervalo (segundos) entre reintentos"),
                 Configuracion.Create(ConfigurationKeys.System.WorkQueueCount, "2", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Numero, "Número de colas de trabajo simultáneas"),
+                Configuracion.Create(ConfigurationKeys.System.TimeZoneId, "Central Standard Time (Mexico)", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Texto, "Zona horaria del negocio (ID de TimeZoneInfo)"),
                 
                 Configuracion.Create(ConfigurationKeys.Orders.LateOrderWarningStartHour, "16:00", BotCarniceria.Core.Domain.Enums.TipoConfiguracion.Texto, "Hora de inicio aviso horario (formato HH:mm)")
             };
