@@ -1,6 +1,7 @@
 using BotCarniceria.Core.Domain.Common;
 using BotCarniceria.Core.Domain.Enums;
 using BotCarniceria.Core.Domain.ValueObjects;
+using BotCarniceria.Core.Domain.Events;
 
 namespace BotCarniceria.Core.Domain.Entities;
 
@@ -42,7 +43,7 @@ public class SolicitudFactura : BaseEntity
         if (datosFacturacion == null)
             throw new ArgumentNullException(nameof(datosFacturacion));
 
-        return new SolicitudFactura
+        var solicitud = new SolicitudFactura
         {
             ClienteID = clienteId,
             Folio = folio,
@@ -53,6 +54,10 @@ public class SolicitudFactura : BaseEntity
             FechaSolicitud = DateTime.UtcNow,
             Notas = notas
         };
+
+        solicitud.AddDomainEvent(new SolicitudFacturaCreadaDomainEvent(solicitud));
+
+        return solicitud;
     }
 
     public void CambiarEstado(EstadoSolicitudFactura nuevoEstado)

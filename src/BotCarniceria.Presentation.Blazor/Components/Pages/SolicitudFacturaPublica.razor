@@ -252,6 +252,10 @@
                     <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
                     Nueva Solicitud
                 </MudButton>
+                
+                <MudText Typo="Typo.caption" Class="mt-4 d-block" Color="Color.Default">
+                    La página se reiniciará automáticamente en <strong>@_secondsToRedirect</strong> segundos...
+                </MudText>
             </div>
         }
     </div>
@@ -534,6 +538,9 @@
                !string.IsNullOrWhiteSpace(_usoCFDI);
     }
 
+    private int _secondsToRedirect = 10;
+    private System.Threading.Timer? _redirectTimer;
+
     private async Task EnviarSolicitud()
     {
         if (!ValidarDatosNota())
@@ -553,15 +560,13 @@
                 if (string.IsNullOrWhiteSpace(_datosFacturacion.Telefono))
                 {
                     Snackbar.Add("El teléfono es requerido para nuevos clientes", Severity.Warning);
-                    _loading = false;
-                    StateHasChanged();
                     return;
                 }
 
                 var createClienteCommand = new CreateClienteCommand
                 {
                     NumeroTelefono = _datosFacturacion.Telefono,
-                    Nombre = _datosFacturacion.RazonSocial, // Usamos la Razón Social como nombre inicial
+                    Nombre = _datosFacturacion.RazonSocial, 
                     Direccion = $"{_datosFacturacion.Calle} {_datosFacturacion.Numero}, {_datosFacturacion.Colonia}, {_datosFacturacion.CodigoPostal}"
                 };
 
@@ -592,19 +597,55 @@
                 Total = _total,
                 UsoCFDI = _usoCFDI
             };
-
+            Console.WriteLine($"[CreateSolicitudFactura] Creating solicitud for cliente {_clienteId.Value}");
             _solicitudId = await Mediator.Send(createCommand);
+            
+            // Success
+            Console.WriteLine("Turn off loading");
+            _loading = false; // Turn off loading immediately
+            StateHasChanged();
+            Console.WriteLine("Refresh to show confirmation");
             _currentStep = Step.Confirmacion;
+            StateHasChanged(); // Refresh to show confirmation
+            Console.WriteLine("Show confirmation");
             Snackbar.Add("¡Solicitud de factura enviada exitosamente!", Severity.Success);
+            
+            // Iniciar conteo regresivo
+            Console.WriteLine("Start countdown");
+            await IniciarConteoRegresivo();
         }
         catch (Exception ex)
         {
+            // Logging
+            Console.WriteLine($"Error sending invoice request: {ex}");
             Snackbar.Add($"Error al enviar solicitud: {ex.Message}", Severity.Error);
         }
         finally
         {
-            _loading = false;
+            // Ensure loading is off no matter what happens (unless it was already turned off in success path, which is fine)
+            if (_loading)
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task IniciarConteoRegresivo()
+    {
+        _secondsToRedirect = 10;
+        StateHasChanged();
+
+        while (_secondsToRedirect > 0 && _currentStep == Step.Confirmacion)
+        {
+            await Task.Delay(1000);
+            _secondsToRedirect--;
             StateHasChanged();
+        }
+
+        if (_currentStep == Step.Confirmacion)
+        {
+            await InvokeAsync(NuevaSolicitud);
         }
     }
 
@@ -618,11 +659,15 @@
         _folio = "";
         _total = 0;
         _usoCFDI = "";
+        StateHasChanged();
     }
 
     private void NuevaSolicitud()
     {
         Cancelar();
+        // El estado se reinicia en Cancelar(), pero nos aseguramos de estar en el paso 1
+        _currentStep = Step.IngresarRFC;
+        StateHasChanged();
     }
 
     // Catálogos

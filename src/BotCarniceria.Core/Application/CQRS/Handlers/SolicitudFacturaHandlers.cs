@@ -5,6 +5,8 @@ using BotCarniceria.Core.Application.Interfaces;
 using BotCarniceria.Core.Domain.Constants;
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
+using BotCarniceria.Core.Application.Specifications;
+using BotCarniceria.Core.Domain.ValueObjects;
 using MediatR;
 
 namespace BotCarniceria.Core.Application.CQRS.Handlers;
@@ -174,6 +176,8 @@ public class GetSolicitudesFacturaByClienteQueryHandler : IRequestHandler<GetSol
 
 /// <summary>
 /// Handler for creating a new invoice request
+/// <summary>
+/// Handler for creating a new invoice request
 /// </summary>
 public class CreateSolicitudFacturaCommandHandler : IRequestHandler<CreateSolicitudFacturaCommand, long>
 {
@@ -194,13 +198,25 @@ public class CreateSolicitudFacturaCommandHandler : IRequestHandler<CreateSolici
         if (cliente.DatosFacturacion == null)
             throw new InvalidOperationException("El cliente no tiene datos de facturación registrados");
 
+        // Create a COPY of the billing data to avoid EF Core tracking issues (shared instance between entities)
+        var datosFacturacionCopy = new DatosFacturacion(
+            cliente.DatosFacturacion.RazonSocial,
+            cliente.DatosFacturacion.RFC,
+            cliente.DatosFacturacion.Calle,
+            cliente.DatosFacturacion.Numero,
+            cliente.DatosFacturacion.Colonia,
+            cliente.DatosFacturacion.CodigoPostal,
+            cliente.DatosFacturacion.Correo,
+            cliente.DatosFacturacion.RegimenFiscal
+        );
+
         // Create the invoice request
         var solicitud = SolicitudFactura.Create(
             request.ClienteID,
             request.Folio,
             request.Total,
             request.UsoCFDI,
-            cliente.DatosFacturacion,
+            datosFacturacionCopy,
             request.Notas
         );
 
@@ -210,6 +226,7 @@ public class CreateSolicitudFacturaCommandHandler : IRequestHandler<CreateSolici
         return solicitud.SolicitudFacturaID;
     }
 }
+
 
 /// <summary>
 /// Handler for updating invoice request status
