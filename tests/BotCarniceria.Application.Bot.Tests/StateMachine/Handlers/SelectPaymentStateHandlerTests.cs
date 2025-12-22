@@ -5,6 +5,7 @@ using BotCarniceria.Core.Application.Interfaces.BackgroundJobs;
 using BotCarniceria.Core.Application.Interfaces.BackgroundJobs.Jobs; // Added for EnqueuePrintJob
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
+using BotCarniceria.Core.Domain.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,9 +20,10 @@ public class SelectPaymentStateHandlerTests
     private readonly Mock<IBackgroundJobService> _mockBackgroundJobService;
     private readonly Mock<IRealTimeNotificationService> _mockNotificationService;
     private readonly Mock<ILogger<SelectPaymentStateHandler>> _mockLogger;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
     private readonly Mock<IClienteRepository> _mockClienteRepository;
     private readonly Mock<IOrderRepository> _mockOrderRepository;
-    private readonly Mock<IConfiguracionRepository> _mockSettings; // Added for unitOfWork.Settings
+    private readonly Mock<IConfiguracionRepository> _mockSettings;
     private readonly SelectPaymentStateHandler _handler;
 
     public SelectPaymentStateHandlerTests()
@@ -31,6 +33,7 @@ public class SelectPaymentStateHandlerTests
         _mockBackgroundJobService = new Mock<IBackgroundJobService>();
         _mockNotificationService = new Mock<IRealTimeNotificationService>();
         _mockLogger = new Mock<ILogger<SelectPaymentStateHandler>>();
+        _mockDateTimeProvider = new Mock<IDateTimeProvider>();
         _mockClienteRepository = new Mock<IClienteRepository>();
         _mockOrderRepository = new Mock<IOrderRepository>();
         _mockSettings = new Mock<IConfiguracionRepository>();
@@ -44,7 +47,8 @@ public class SelectPaymentStateHandlerTests
             _mockWhatsAppService.Object,
             _mockBackgroundJobService.Object,
             _mockNotificationService.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockDateTimeProvider.Object);
     }
 
     [Fact]

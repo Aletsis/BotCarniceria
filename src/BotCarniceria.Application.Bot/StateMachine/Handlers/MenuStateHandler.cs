@@ -172,19 +172,7 @@ public class MenuStateHandler : IConversationStateHandler
     private async Task ShowMainMenuAsync(string phoneNumber, string message)
     {
         string title = "Bienvenido";
-        var cliente = await _unitOfWork.Clientes.GetByPhoneAsync(phoneNumber);
-
-        string greeting;
-        if (cliente != null && !string.IsNullOrEmpty(cliente.Nombre))
-        {
-            greeting = $"¡Hola {cliente.Nombre}! 👋 Es un gusto tenerte de vuelta.";
-        }
-        else
-        {
-            greeting = "¡Hola! 👋 Bienvenido/a a Carnicería La Blanquita. \nSoy Blanqui un bot diseñado para ayudarte a: \n Hacer pedidos\n Consultar el estado de tus pedidos \n Obtener información sobre nuestra sucursal.";
-        }
-
-        string message2 = "¿En qué puedo ayudarte hoy?";
+        string footer = "¿En qué puedo ayudarte hoy?";
 
         var rows = new List<(string id, string title, string? description)>
         {
@@ -194,7 +182,7 @@ public class MenuStateHandler : IConversationStateHandler
             ("menu_informacion", "ℹ️ Información", "Horarios y ubicación")
         };
 
-        await _whatsAppService.SendInteractiveListAsync(phoneNumber, greeting, "Ver Menú", rows, title, message2);
+        await _whatsAppService.SendInteractiveListAsync(phoneNumber, message, "Ver Menú", rows, title, footer);
     }
 
     private async Task InitOrderProcessAsync(string phoneNumber, Conversacion session, Cliente? cliente = null)

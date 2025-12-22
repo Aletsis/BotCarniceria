@@ -45,13 +45,14 @@ public class StartStateHandlerTests
             .ReturnsAsync(cliente);
 
         string? capturedMessage = null;
-        _mockWhatsAppService.Setup(x => x.SendInteractiveButtonsAsync(
+        _mockWhatsAppService.Setup(x => x.SendInteractiveListAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.IsAny<List<(string id, string title)>>(),
+            It.IsAny<string>(),
+            It.IsAny<List<(string id, string title, string? description)>>(),
             It.IsAny<string?>(),
             It.IsAny<string?>()))
-            .Callback<string, string, List<(string id, string title)>, string?, string?>((_, msg, __, ___, ____) => capturedMessage = msg)
+            .Callback<string, string, string, List<(string id, string title, string? description)>, string?, string?>((_, msg, __, ___, ____, _____) => capturedMessage = msg)
             .ReturnsAsync(true);
 
         // Act
@@ -74,13 +75,14 @@ public class StartStateHandlerTests
             .ReturnsAsync((Cliente?)null);
 
         string? capturedMessage = null;
-        _mockWhatsAppService.Setup(x => x.SendInteractiveButtonsAsync(
+        _mockWhatsAppService.Setup(x => x.SendInteractiveListAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.IsAny<List<(string id, string title)>>(),
+            It.IsAny<string>(),
+            It.IsAny<List<(string id, string title, string? description)>>(),
             It.IsAny<string?>(),
             It.IsAny<string?>()))
-            .Callback<string, string, List<(string id, string title)>, string?, string?>((_, msg, __, ___, ____) => capturedMessage = msg)
+            .Callback<string, string, string, List<(string id, string title, string? description)>, string?, string?>((_, msg, __, ___, ____, _____) => capturedMessage = msg)
             .ReturnsAsync(true);
 
         // Act
@@ -103,25 +105,27 @@ public class StartStateHandlerTests
         _mockClienteRepository.Setup(x => x.GetByPhoneAsync(phoneNumber))
             .ReturnsAsync((Cliente?)null);
 
-        List<(string id, string title)>? capturedButtons = null;
-        _mockWhatsAppService.Setup(x => x.SendInteractiveButtonsAsync(
+        List<(string id, string title, string? description)>? capturedRows = null;
+        _mockWhatsAppService.Setup(x => x.SendInteractiveListAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.IsAny<List<(string id, string title)>>(),
+            It.IsAny<string>(),
+            It.IsAny<List<(string id, string title, string? description)>>(),
             It.IsAny<string?>(),
             It.IsAny<string?>()))
-            .Callback<string, string, List<(string id, string title)>, string?, string?>((_, __, buttons, ___, ____) => capturedButtons = buttons)
+            .Callback<string, string, string, List<(string id, string title, string? description)>, string?, string?>((_, __, ___, rows, ____, _____) => capturedRows = rows)
             .ReturnsAsync(true);
 
         // Act
         await _handler.HandleAsync(phoneNumber, messageContent, session);
 
         // Assert
-        capturedButtons.Should().NotBeNull();
-        capturedButtons.Should().HaveCount(3);
-        capturedButtons.Should().Contain(b => b.id == "menu_hacer_pedido");
-        capturedButtons.Should().Contain(b => b.id == "menu_estado_pedido");
-        capturedButtons.Should().Contain(b => b.id == "menu_informacion");
+        capturedRows.Should().NotBeNull();
+        capturedRows.Should().HaveCount(4);
+        capturedRows.Should().Contain(b => b.id == "menu_hacer_pedido");
+        capturedRows.Should().Contain(b => b.id == "menu_estado_pedido");
+        capturedRows.Should().Contain(b => b.id == "menu_solicitar_factura");
+        capturedRows.Should().Contain(b => b.id == "menu_informacion");
     }
 
     [Fact]

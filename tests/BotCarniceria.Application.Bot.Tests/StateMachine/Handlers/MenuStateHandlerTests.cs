@@ -3,6 +3,7 @@ using BotCarniceria.Core.Application.Interfaces;
 using BotCarniceria.Core.Application.Specifications;
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
+using BotCarniceria.Core.Domain.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -13,6 +14,7 @@ public class MenuStateHandlerTests
 {
     private readonly Mock<IWhatsAppService> _mockWhatsAppService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
     private readonly Mock<IClienteRepository> _mockClienteRepository;
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<IConfiguracionRepository> _mockConfigRepository;
@@ -22,6 +24,7 @@ public class MenuStateHandlerTests
     {
         _mockWhatsAppService = new Mock<IWhatsAppService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _mockDateTimeProvider = new Mock<IDateTimeProvider>();
         _mockClienteRepository = new Mock<IClienteRepository>();
         _mockOrderRepository = new Mock<IOrderRepository>();
         _mockConfigRepository = new Mock<IConfiguracionRepository>();
@@ -32,7 +35,8 @@ public class MenuStateHandlerTests
 
         _handler = new MenuStateHandler(
             _mockWhatsAppService.Object,
-            _mockUnitOfWork.Object);
+            _mockUnitOfWork.Object,
+            _mockDateTimeProvider.Object);
     }
 
     #region Hacer Pedido Tests
@@ -214,13 +218,14 @@ public class MenuStateHandlerTests
         await _handler.HandleAsync(phoneNumber, messageContent, session);
 
         // Assert
-        _mockWhatsAppService.Verify(x => x.SendInteractiveButtonsAsync(
+        _mockWhatsAppService.Verify(x => x.SendInteractiveListAsync(
             phoneNumber,
             It.Is<string>(msg => 
                 msg.Contains("Información") && 
                 msg.Contains("Dirección") && 
                 msg.Contains("Horarios")),
-            It.Is<List<(string id, string title)>>(b => b.Any(btn => btn.id == "menu_hacer_pedido")),
+            It.IsAny<string>(),
+            It.IsAny<List<(string id, string title, string? description)>>(),
             It.IsAny<string?>(),
             It.IsAny<string?>()),
             Times.Once);
@@ -241,10 +246,11 @@ public class MenuStateHandlerTests
         await _handler.HandleAsync(phoneNumber, messageContent, session);
 
         // Assert
-        _mockWhatsAppService.Verify(x => x.SendInteractiveButtonsAsync(
+        _mockWhatsAppService.Verify(x => x.SendInteractiveListAsync(
             phoneNumber,
             It.Is<string>(msg => msg.Contains("Información")),
-            It.IsAny<List<(string id, string title)>>(),
+            It.IsAny<string>(),
+            It.IsAny<List<(string id, string title, string? description)>>(),
             It.IsAny<string?>(),
             It.IsAny<string?>()),
             Times.Once);
@@ -266,10 +272,11 @@ public class MenuStateHandlerTests
         await _handler.HandleAsync(phoneNumber, messageContent, session);
 
         // Assert
-        _mockWhatsAppService.Verify(x => x.SendInteractiveButtonsAsync(
+        _mockWhatsAppService.Verify(x => x.SendInteractiveListAsync(
             phoneNumber,
-            It.Is<string>(msg => msg.Contains("selecciona una opción")),
-            It.Is<List<(string id, string title)>>(b => b.Count == 3),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.Is<List<(string id, string title, string? description)>>(b => b.Count == 4),
             It.IsAny<string?>(),
             It.IsAny<string?>()),
             Times.Once);
