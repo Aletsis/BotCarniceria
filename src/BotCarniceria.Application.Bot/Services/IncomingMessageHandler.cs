@@ -196,7 +196,7 @@ public class IncomingMessageHandler : IIncomingMessageHandler
             session.ActualizarActividad();
 
             var handler = _stateHandlerFactory.GetHandler(session.Estado);
-            await handler.HandleAsync(phoneNumber, content, session);
+            await handler.HandleAsync(phoneNumber, content, tipoContenido, session);
 
             // Save changes from state machine processing
             await _unitOfWork.SaveChangesAsync();

@@ -18,7 +18,7 @@ public class ConfirmLateOrderStateHandler : IConversationStateHandler
         _unitOfWork = unitOfWork;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
         if (messageContent == "late_order_continue")
         {

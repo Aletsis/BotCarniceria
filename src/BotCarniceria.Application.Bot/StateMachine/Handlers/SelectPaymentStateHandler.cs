@@ -35,7 +35,7 @@ public class SelectPaymentStateHandler : IConversationStateHandler
         _dateTimeProvider = dateTimeProvider;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
         if (messageContent == "payment_cash" || messageContent == "payment_card")
         {

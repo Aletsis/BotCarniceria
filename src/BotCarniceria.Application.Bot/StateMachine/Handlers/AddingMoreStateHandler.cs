@@ -14,8 +14,14 @@ public class AddingMoreStateHandler : IConversationStateHandler
         _whatsAppService = whatsAppService;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
+        if (messageType != TipoContenidoMensaje.Texto)
+        {
+            await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Por favor, escribe los productos adicionales en texto.");
+            return;
+        }
+
         // Agregar los nuevos productos al pedido existente
         var pedidoActual = session.Buffer ?? "";
         var pedidoActualizado = $"{pedidoActual}\n{messageContent}";

@@ -25,7 +25,7 @@ public class MenuStateHandler : IConversationStateHandler
         _dateTimeProvider = dateTimeProvider;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
         if (messageContent == "menu_hacer_pedido")
         {

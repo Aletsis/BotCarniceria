@@ -25,7 +25,7 @@ public class BillingStateHandler : IConversationStateHandler
     }
 
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
         var cliente = await _unitOfWork.Clientes.GetByPhoneAsync(phoneNumber);
         if (cliente == null)
@@ -67,6 +67,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_RAZON_SOCIAL:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe la Razón Social.");
+                    return;
+                }
                 var newRazon = messageContent;
                 UpdateBillingData(cliente, razonSocial: newRazon);
                 await _unitOfWork.SaveChangesAsync();
@@ -76,6 +81,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_RFC:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe el RFC.");
+                    return;
+                }
                 UpdateBillingData(cliente, rfc: messageContent);
                 await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "🏢 *Calle:*\nPor favor, ingresa la calle:");
@@ -83,6 +93,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_CALLE:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe la calle.");
+                    return;
+                }
                 UpdateBillingData(cliente, calle: messageContent);
                 await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "🔢 *Número:*\nPor favor, ingresa el número exterior/interior:");
@@ -90,6 +105,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_NUMERO:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe el número.");
+                    return;
+                }
                 UpdateBillingData(cliente, numero: messageContent);
                 await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "🏘️ *Colonia:*\nPor favor, ingresa la colonia:");
@@ -97,6 +117,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_COLONIA:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe la colonia.");
+                    return;
+                }
                 UpdateBillingData(cliente, colonia: messageContent);
                 await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "📮 *Código Postal:*\nPor favor, ingresa el código postal:");
@@ -104,6 +129,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_CP:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe el código postal.");
+                    return;
+                }
                 UpdateBillingData(cliente, cp: messageContent);
                 await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "📧 *Correo Electrónico:*\nPor favor, ingresa el correo para recibir la factura:");
@@ -111,6 +141,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_CORREO:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe el correo.");
+                    return;
+                }
                 UpdateBillingData(cliente, correo: messageContent);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -160,6 +195,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_NOTE_FOLIO:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe el folio.");
+                    return;
+                }
                 session.SetFacturaTemp_Folio(messageContent);
                 await _unitOfWork.SaveChangesAsync();
                 await _whatsAppService.SendTextMessageAsync(phoneNumber, "💲 *Total de la Nota:*\nPor favor, ingresa el monto total del ticket:");
@@ -167,6 +207,11 @@ public class BillingStateHandler : IConversationStateHandler
                 break;
 
             case ConversationState.BILLING_ASK_NOTE_TOTAL:
+                if (messageType != TipoContenidoMensaje.Texto)
+                {
+                    await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe el total.");
+                    return;
+                }
                 session.SetFacturaTemp_Total(messageContent);
                 await _unitOfWork.SaveChangesAsync();
 

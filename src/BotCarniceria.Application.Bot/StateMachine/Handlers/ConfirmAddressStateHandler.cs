@@ -18,7 +18,7 @@ public class ConfirmAddressStateHandler : IConversationStateHandler
         _unitOfWork = unitOfWork;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
         if (messageContent == "address_correct")
         {

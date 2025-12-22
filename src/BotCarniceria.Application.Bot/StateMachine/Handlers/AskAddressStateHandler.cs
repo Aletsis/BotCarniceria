@@ -19,8 +19,14 @@ public class AskAddressStateHandler : IConversationStateHandler
         _whatsAppService = whatsAppService;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
+        if (messageType != TipoContenidoMensaje.Texto)
+        {
+            await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe tu dirección en texto.");
+            return;
+        }
+
         try
         {
             // Begin transaction for atomic operation

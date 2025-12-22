@@ -14,8 +14,14 @@ public class AskNameStateHandler : IConversationStateHandler
         _whatsAppService = whatsAppService;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
+        if (messageType != TipoContenidoMensaje.Texto)
+        {
+            await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Respuesta no válida. Por favor, escribe tu nombre en texto.");
+            return;
+        }
+
         session.GuardarNombreTemporal(messageContent);
         session.CambiarEstado(ConversationState.ASK_ADDRESS);
 

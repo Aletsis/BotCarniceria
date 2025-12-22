@@ -22,7 +22,7 @@ public class StartStateHandler : IConversationStateHandler
         _logger = logger;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
 
         var title = "Bienvenido";

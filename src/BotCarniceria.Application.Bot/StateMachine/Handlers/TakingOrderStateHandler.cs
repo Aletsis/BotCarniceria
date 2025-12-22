@@ -14,8 +14,14 @@ public class TakingOrderStateHandler : IConversationStateHandler
         _whatsAppService = whatsAppService;
     }
 
-    public async Task HandleAsync(string phoneNumber, string messageContent, Conversacion session)
+    public async Task HandleAsync(string phoneNumber, string messageContent, TipoContenidoMensaje messageType, Conversacion session)
     {
+        if (messageType != TipoContenidoMensaje.Texto)
+        {
+            await _whatsAppService.SendTextMessageAsync(phoneNumber, "❌ Por favor, escribe tu pedido en texto.");
+            return;
+        }
+
         // Mostrar resumen del pedido con opciones
         var resumen = $"📋 *Resumen de tu pedido:*\n\n{messageContent}\n\n¿Qué deseas hacer?";
         
