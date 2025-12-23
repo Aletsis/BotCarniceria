@@ -11,6 +11,8 @@ using Hangfire;
 using Hangfire.Storage;
 using Hangfire.Common;
 using Hangfire.States;
+using MediatR;
+using BotCarniceria.Core.Application.Events;
 
 namespace BotCarniceria.Infrastructure.Tests.BackgroundJobs.Handlers;
 
@@ -18,22 +20,22 @@ public class PrintJobHandlerTests
 {
     private readonly Mock<IPrintingService> _printingServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
-    private readonly Mock<IWhatsAppService> _whatsAppServiceMock;
     private readonly Mock<ILogger<PrintJobHandler>> _loggerMock;
     private readonly Mock<IBackgroundJobClient> _backgroundJobClientMock;
     private readonly Mock<IConfiguracionRepository> _settingsMock;
     private readonly Mock<IUsuarioRepository> _usersMock;
+    private readonly Mock<IPublisher> _publisherMock;
     private readonly PrintJobHandler _handler;
 
     public PrintJobHandlerTests()
     {
         _printingServiceMock = new Mock<IPrintingService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _whatsAppServiceMock = new Mock<IWhatsAppService>();
         _loggerMock = new Mock<ILogger<PrintJobHandler>>();
         _backgroundJobClientMock = new Mock<IBackgroundJobClient>();
         _settingsMock = new Mock<IConfiguracionRepository>();
         _usersMock = new Mock<IUsuarioRepository>();
+        _publisherMock = new Mock<IPublisher>();
 
         _unitOfWorkMock.Setup(u => u.Settings).Returns(_settingsMock.Object);
         _unitOfWorkMock.Setup(u => u.Users).Returns(_usersMock.Object);
@@ -41,9 +43,9 @@ public class PrintJobHandlerTests
         _handler = new PrintJobHandler(
             _printingServiceMock.Object,
             _unitOfWorkMock.Object,
-            _whatsAppServiceMock.Object,
             _loggerMock.Object,
-            _backgroundJobClientMock.Object);
+            _backgroundJobClientMock.Object,
+            _publisherMock.Object);
     }
 
     [Fact]
@@ -111,7 +113,7 @@ public class PrintJobHandlerTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenPrintFails_ShouldScheduleRetry()
+    public async Task ExecuteAsync_WhenPrintFails_ShouldScheduleRetry_AndPublishEvent()
     {
         // Arrange
         var job = new EnqueuePrintJob { PedidoId = 1, PrinterName = "TestPrinter", RetryCount = 0 };
@@ -132,10 +134,6 @@ public class PrintJobHandlerTests
         _settingsMock.Setup(s => s.GetValorAsync("Sistema.PrintRetryCount")).ReturnsAsync("3");
         _settingsMock.Setup(s => s.GetValorAsync("Sistema.RetryIntervalSeconds")).ReturnsAsync("60");
         
-        // Mock Users for notification
-        _usersMock.Setup(u => u.FindAsync(It.IsAny<Specification<Usuario>>()))
-            .ReturnsAsync(new List<Usuario>());
-
         // Act
         // Should NOT throw exception now, but catch and schedule retry
         await _handler.ExecuteAsync(job, CancellationToken.None);
@@ -146,8 +144,7 @@ public class PrintJobHandlerTests
             It.Is<Job>(j => j.Type == typeof(PrintJobHandler) && j.Method.Name == "ExecuteAsync"),
             It.IsAny<ScheduledState>()), Times.Once);
 
-        // Verify that retry count was incremented in the scheduled job arguments
-        // This is complex to verify deeply with Moq without inspecting the arguments of the Job. 
-        // For now, Times.Once is sufficient proof it reached the scheduling block.
+        // Verify that notification event was published
+        _publisherMock.Verify(p => p.Publish(It.IsAny<PrintJobFailedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

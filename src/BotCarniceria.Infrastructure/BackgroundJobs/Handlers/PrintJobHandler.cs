@@ -5,6 +5,8 @@ using BotCarniceria.Core.Application.Interfaces.BackgroundJobs.Jobs;
 using BotCarniceria.Core.Application.Specifications;
 using BotCarniceria.Core.Domain.Constants;
 using Hangfire;
+using MediatR;
+using BotCarniceria.Core.Application.Events;
 
 namespace BotCarniceria.Infrastructure.BackgroundJobs.Handlers;
 
@@ -15,22 +17,22 @@ public class PrintJobHandler : IJobHandler<EnqueuePrintJob>
 {
     private readonly IPrintingService _printingService;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IWhatsAppService _whatsAppService;
     private readonly ILogger<PrintJobHandler> _logger;
     private readonly IBackgroundJobClient _backgroundJobClient;
+    private readonly IPublisher _publisher;
 
     public PrintJobHandler(
         IPrintingService printingService,
         IUnitOfWork unitOfWork,
-        IWhatsAppService whatsAppService,
         ILogger<PrintJobHandler> logger,
-        IBackgroundJobClient backgroundJobClient)
+        IBackgroundJobClient backgroundJobClient,
+        IPublisher publisher)
     {
         _printingService = printingService;
         _unitOfWork = unitOfWork;
-        _whatsAppService = whatsAppService;
         _logger = logger;
         _backgroundJobClient = backgroundJobClient;
+        _publisher = publisher;
     }
 
     /// <summary>
@@ -121,7 +123,7 @@ public class PrintJobHandler : IJobHandler<EnqueuePrintJob>
                 _logger.LogWarning("Scheduling retry {NextRetry} for job {JobId} in {Interval} seconds", nextRetryCount, job.JobId, retryInterval);
                 
                 // Notify admin about failure (optional per attempt)
-                await NotifyAdminsOfPrintFailureAsync(job.PedidoId, nextRetryCount);
+                await _publisher.Publish(new PrintJobFailedEvent(job.PedidoId, nextRetryCount, false), cancellationToken);
 
                 // Schedule next attempt
                 _backgroundJobClient.Schedule<PrintJobHandler>(
@@ -142,58 +144,10 @@ public class PrintJobHandler : IJobHandler<EnqueuePrintJob>
             else
             {
                  _logger.LogError("Max retries ({MaxRetries}) exceeded for job {JobId}. Giving up.", maxRetries, job.JobId);
-                 await NotifyAdminsOfPrintFailureAsync(job.PedidoId, job.RetryCount + 1, true); // Final failure
+                 await _publisher.Publish(new PrintJobFailedEvent(job.PedidoId, job.RetryCount + 1, true), cancellationToken); // Final failure
             }
 
             // We do NOT throw here, merging the catch block logic to stop Hangfire automatic retries (since we handle it manually)
-        }
-    }
-
-    /// <summary>
-    /// Notifica a los administradores cuando falla la impresión
-    /// </summary>
-    private async Task NotifyAdminsOfPrintFailureAsync(long pedidoId, int attemptNumber, bool isFinal = false)
-    {
-        try
-        {
-            var pedido = await _unitOfWork.Orders.GetByIdAsync(pedidoId);
-            if (pedido == null) return;
-
-            var spec = new AdminAndSupervisorUsersSpecification();
-            var admins = await _unitOfWork.Users.FindAsync(spec);
-            
-            var attemptText = attemptNumber == 1 
-                ? "en el primer intento" 
-                : $"en el intento #{attemptNumber}";
-
-            var actionText = isFinal
-                ? "⛔ Se han agotado los reintentos. Revise la impresora MANUALMENTE."
-                : "🔄 El sistema reintentará automáticamente.";
-
-            foreach (var admin in admins)
-            {
-                if (!string.IsNullOrEmpty(admin.Telefono))
-                {
-                    await _whatsAppService.SendTextMessageAsync(admin.Telefono,
-                        $"🚨 *ALERTA DE IMPRESIÓN*\n\n" +
-                        $"❌ Error al imprimir el ticket del pedido *{pedido.Folio.Value}* {attemptText}.\n" +
-                        $"{actionText}\n\n" +
-                        $"📋 Cliente: {pedido.Cliente?.Nombre ?? "N/A"}\n" +
-                        $"📞 Teléfono: {pedido.Cliente?.NumeroTelefono ?? "N/A"}\n\n" +
-                        $"⚠️ Por favor verifique el estado de la impresora.");
-                }
-            }
-
-            _logger.LogWarning(
-                "Notified {AdminCount} administrators about print failure for Pedido {PedidoId} (Attempt {AttemptNumber}, Final: {IsFinal})",
-                admins.Count(),
-                pedidoId,
-                attemptNumber,
-                isFinal);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to notify admins about print failure for Pedido {PedidoId}", pedidoId);
         }
     }
 }
