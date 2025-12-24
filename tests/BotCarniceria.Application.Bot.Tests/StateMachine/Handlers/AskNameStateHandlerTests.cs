@@ -28,7 +28,7 @@ public class AskNameStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.NombreTemporal.Should().Be(messageContent);
@@ -44,7 +44,7 @@ public class AskNameStateHandlerTests
         session.CambiarEstado(ConversationState.ASK_NAME);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Estado.Should().Be(ConversationState.ASK_ADDRESS);
@@ -66,7 +66,7 @@ public class AskNameStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("Gracias");
@@ -83,7 +83,7 @@ public class AskNameStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.NombreTemporal.Should().Be(messageContent);
@@ -99,7 +99,7 @@ public class AskNameStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.NombreTemporal.Should().Be(messageContent);

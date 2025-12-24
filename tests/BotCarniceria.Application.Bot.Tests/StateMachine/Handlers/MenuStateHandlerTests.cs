@@ -53,7 +53,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync((Cliente?)null);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
@@ -77,7 +77,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync(cliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
@@ -101,7 +101,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync(cliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
@@ -128,7 +128,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync((Cliente?)null);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
@@ -153,7 +153,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync(new List<Pedido>());
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
@@ -184,7 +184,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync(pedidos);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
@@ -215,7 +215,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync("60-90 minutos");
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendInteractiveListAsync(
@@ -243,7 +243,7 @@ public class MenuStateHandlerTests
             .ReturnsAsync((string?)null);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendInteractiveListAsync(
@@ -269,7 +269,7 @@ public class MenuStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockWhatsAppService.Verify(x => x.SendInteractiveListAsync(

@@ -68,7 +68,7 @@ public class SelectPaymentStateHandlerTests
             .ReturnsAsync("job-id");
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Pedido>()), Times.Once);
@@ -88,7 +88,7 @@ public class SelectPaymentStateHandlerTests
             .ReturnsAsync(cliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Buffer.Should().BeNullOrEmpty();
@@ -116,7 +116,7 @@ public class SelectPaymentStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("Pedido confirmado");
@@ -137,7 +137,7 @@ public class SelectPaymentStateHandlerTests
             .ReturnsAsync(cliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockBackgroundJobService.Verify(x => x.EnqueueAsync(
@@ -160,7 +160,7 @@ public class SelectPaymentStateHandlerTests
             .ReturnsAsync(cliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockNotificationService.Verify(x => x.NotifyOrdersUpdatedAsync(), Times.Once);
@@ -178,7 +178,7 @@ public class SelectPaymentStateHandlerTests
             .ReturnsAsync((Cliente?)null);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);

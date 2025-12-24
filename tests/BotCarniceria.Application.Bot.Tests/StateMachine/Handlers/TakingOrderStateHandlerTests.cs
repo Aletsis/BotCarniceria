@@ -44,7 +44,7 @@ public class TakingOrderStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().NotBeNull();
@@ -75,7 +75,7 @@ public class TakingOrderStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedButtons.Should().Contain(b => b.id == "order_confirm");
@@ -102,7 +102,7 @@ public class TakingOrderStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedButtons.Should().Contain(b => b.id == "order_add_more");
@@ -118,7 +118,7 @@ public class TakingOrderStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Buffer.Should().Be(messageContent);
@@ -134,7 +134,7 @@ public class TakingOrderStateHandlerTests
         session.CambiarEstado(ConversationState.TAKING_ORDER);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Estado.Should().Be(ConversationState.AWAITING_CONFIRM);
@@ -163,7 +163,7 @@ public class TakingOrderStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Buffer.Should().Be(messageContent);
@@ -180,7 +180,7 @@ public class TakingOrderStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Buffer.Should().Be(messageContent);

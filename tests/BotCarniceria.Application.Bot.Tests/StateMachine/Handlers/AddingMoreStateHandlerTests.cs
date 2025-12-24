@@ -30,7 +30,7 @@ public class AddingMoreStateHandlerTests
         session.GuardarBuffer(existingOrder);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, newItems, session);
+        await _handler.HandleAsync(phoneNumber, newItems, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Buffer.Should().Contain(existingOrder);
@@ -47,7 +47,7 @@ public class AddingMoreStateHandlerTests
         session.GuardarBuffer("Pedido existente");
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Estado.Should().Be(ConversationState.AWAITING_CONFIRM);
@@ -74,7 +74,7 @@ public class AddingMoreStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, newItems, session);
+        await _handler.HandleAsync(phoneNumber, newItems, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("actualizado");
@@ -91,7 +91,7 @@ public class AddingMoreStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Buffer.Should().Contain(messageContent);

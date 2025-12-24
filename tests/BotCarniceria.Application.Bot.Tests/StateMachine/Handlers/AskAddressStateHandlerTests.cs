@@ -44,7 +44,7 @@ public class AskAddressStateHandlerTests
             .ReturnsAsync((Cliente?)null);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, address, session);
+        await _handler.HandleAsync(phoneNumber, address, TipoContenidoMensaje.Texto, session);
 
         // Assert
         // Verify transaction flow
@@ -81,7 +81,7 @@ public class AskAddressStateHandlerTests
             .ReturnsAsync(existingCliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, newAddress, session);
+        await _handler.HandleAsync(phoneNumber, newAddress, TipoContenidoMensaje.Texto, session);
 
         // Assert
         // Verify Client Update
@@ -105,7 +105,7 @@ public class AskAddressStateHandlerTests
             .ReturnsAsync(existingCliente);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, address, session);
+        await _handler.HandleAsync(phoneNumber, address, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Estado.Should().Be(ConversationState.SELECT_PAYMENT);
@@ -131,7 +131,7 @@ public class AskAddressStateHandlerTests
             .ThrowsAsync(new Exception("Database connection failed"));
 
         // Act
-        Func<Task> act = async () => await _handler.HandleAsync(phoneNumber, "Address", session);
+        Func<Task> act = async () => await _handler.HandleAsync(phoneNumber, "Address", TipoContenidoMensaje.Texto, session);
 
         // Assert
         await act.Should().ThrowAsync<Exception>().WithMessage("Database connection failed");

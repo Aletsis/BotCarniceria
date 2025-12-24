@@ -47,7 +47,7 @@ public class ConfirmAddressStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("Forma de Pago");
@@ -62,7 +62,7 @@ public class ConfirmAddressStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Estado.Should().Be(ConversationState.SELECT_PAYMENT);
@@ -87,7 +87,7 @@ public class ConfirmAddressStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedButtons.Should().HaveCount(2);
@@ -111,7 +111,7 @@ public class ConfirmAddressStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("nueva dirección");
@@ -126,7 +126,7 @@ public class ConfirmAddressStateHandlerTests
         var session = Conversacion.Create(phoneNumber);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         session.Estado.Should().Be(ConversationState.ASK_ADDRESS);
@@ -155,7 +155,7 @@ public class ConfirmAddressStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("Confirmación de Dirección");

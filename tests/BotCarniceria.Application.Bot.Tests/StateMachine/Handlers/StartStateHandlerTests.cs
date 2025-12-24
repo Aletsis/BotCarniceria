@@ -56,7 +56,7 @@ public class StartStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("Juan Pérez");
@@ -86,7 +86,7 @@ public class StartStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedMessage.Should().Contain("Bienvenido/a");
@@ -117,7 +117,7 @@ public class StartStateHandlerTests
             .ReturnsAsync(true);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         capturedRows.Should().NotBeNull();
@@ -141,7 +141,7 @@ public class StartStateHandlerTests
             .ReturnsAsync((Cliente?)null);
 
         // Act
-        await _handler.HandleAsync(phoneNumber, messageContent, session);
+        await _handler.HandleAsync(phoneNumber, messageContent, TipoContenidoMensaje.Texto, session);
 
         // Assert
         initialState.Should().Be(ConversationState.START);

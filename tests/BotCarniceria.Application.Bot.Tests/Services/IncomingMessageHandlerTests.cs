@@ -75,7 +75,7 @@ public class IncomingMessageHandlerTests
         _mockFactory.Verify(f => f.GetHandler(ConversationState.START), Times.Once);
 
         // Verify Handler execution
-        _mockHandler.Verify(h => h.HandleAsync(message.From, "Hola", It.IsAny<Conversacion>()), Times.Once);
+        _mockHandler.Verify(h => h.HandleAsync(message.From, "Hola", TipoContenidoMensaje.Texto, It.IsAny<Conversacion>()), Times.Once);
 
         // Verify Save
         _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
@@ -128,7 +128,7 @@ public class IncomingMessageHandlerTests
         await _service.HandleAsync(message);
 
         // Assert
-        _mockHandler.Verify(h => h.HandleAsync(message.From, "btn_start", session), Times.Once);
+        _mockHandler.Verify(h => h.HandleAsync(message.From, "btn_start", TipoContenidoMensaje.Interactivo, session), Times.Once);
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class IncomingMessageHandlerTests
         var session = Conversacion.Create(message.From);
         _mockSessionRepo.Setup(r => r.GetByPhoneAsync(message.From)).ReturnsAsync(session);
         
-        _mockHandler.Setup(h => h.HandleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Conversacion>()))
+        _mockHandler.Setup(h => h.HandleAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TipoContenidoMensaje>(), It.IsAny<Conversacion>()))
             .ThrowsAsync(new Exception("Critical Error"));
 
         // Act

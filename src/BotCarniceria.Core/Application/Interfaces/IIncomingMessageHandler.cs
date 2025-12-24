@@ -1,6 +1,6 @@
 using BotCarniceria.Core.Application.DTOs.WhatsApp;
 
-namespace BotCarniceria.Application.Bot.Interfaces;
+namespace BotCarniceria.Core.Application.Interfaces;
 
 public interface IIncomingMessageHandler
 {

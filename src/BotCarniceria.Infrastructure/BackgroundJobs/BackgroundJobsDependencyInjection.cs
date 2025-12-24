@@ -55,6 +55,7 @@ public static class BackgroundJobsDependencyInjection
         // Handlers
         services.AddScoped<IJobHandler<EnqueueWhatsAppMessageJob>, WhatsAppJobHandler>();
         services.AddScoped<IJobHandler<EnqueuePrintJob>, PrintJobHandler>();
+        services.AddScoped<IJobHandler<ProcessIncomingMessageJob>, ProcessIncomingMessageJobHandler>();
 
         return services;
     }

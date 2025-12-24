@@ -1,12 +1,13 @@
-using BotCarniceria.Application.Bot.Interfaces;
 using BotCarniceria.Core.Application.DTOs.WhatsApp;
 using BotCarniceria.Core.Application.Interfaces;
+using BotCarniceria.Core.Application.Interfaces.BackgroundJobs;
+using BotCarniceria.Core.Application.Interfaces.BackgroundJobs.Jobs;
 using BotCarniceria.Presentation.API.Controllers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives; // For StringValues
+using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
 
@@ -14,20 +15,25 @@ namespace BotCarniceria.Presentation.API.Tests.Controllers;
 
 public class WebhookControllerTests
 {
-    private readonly Mock<IIncomingMessageHandler> _mockHandler;
+    private readonly Mock<IBackgroundJobService> _mockJobService;
+    private readonly Mock<ICacheService> _mockCacheService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<WebhookController>> _mockLogger;
     private readonly WebhookController _controller;
 
     public WebhookControllerTests()
     {
-        _mockHandler = new Mock<IIncomingMessageHandler>();
+        _mockJobService = new Mock<IBackgroundJobService>();
+        _mockCacheService = new Mock<ICacheService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<WebhookController>>();
 
-        _controller = new WebhookController(_mockHandler.Object, _mockUnitOfWork.Object, _mockLogger.Object);
+        _controller = new WebhookController(
+            _mockJobService.Object, 
+            _mockCacheService.Object, 
+            _mockUnitOfWork.Object, 
+            _mockLogger.Object);
         
-        // Setup default HttpContext
         var httpContext = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext
         {
@@ -58,8 +64,9 @@ public class WebhookControllerTests
         var result = await _controller.VerifyToken();
 
         // Assert
-        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().Be(challenge);
+        // Content helper returns ContentResult
+        var contentResult = result.Should().BeOfType<ContentResult>().Subject;
+        contentResult.Content.Should().Be(challenge);
     }
 
     [Fact]
@@ -87,7 +94,7 @@ public class WebhookControllerTests
     }
 
     [Fact]
-    public async Task ReceiveMessage_ValidPayload_ShouldCallHandlerAndReturnOk()
+    public async Task ReceiveMessage_ValidPayload_NewMessage_ShouldEnqueueAndReturnOk()
     {
         // Arrange
         var message = new WhatsAppMessage { Id = "msg1" };
@@ -111,28 +118,49 @@ public class WebhookControllerTests
             }
         };
 
+        _mockCacheService.Setup(c => c.ExistsAsync($"webhook_msg_{message.Id}")).ReturnsAsync(false);
+
         // Act
         var result = await _controller.ReceiveMessage(payload);
 
         // Assert
         result.Should().BeOfType<OkResult>();
-        _mockHandler.Verify(h => h.HandleAsync(message), Times.Once);
+        _mockJobService.Verify(j => j.EnqueueAsync(It.Is<ProcessIncomingMessageJob>(job => job.Message == message), default), Times.Once);
+        _mockCacheService.Verify(c => c.SetAsync($"webhook_msg_{message.Id}", "processed", It.IsAny<TimeSpan?>()), Times.Once);
     }
 
     [Fact]
-    public async Task ReceiveMessage_EmptyPayload_ShouldReturnOk_ButNoHandlerCall()
+    public async Task ReceiveMessage_DuplicateMessage_ShouldSkipEnqueue()
     {
         // Arrange
-        // Usually if payload is null or entry empty, we return BadRequest according to logic in file.
-        // File says: if (payload?.Entry == null) return BadRequest();
-        
-        var payload = new WebhookPayload(); // Entry is null
+        var message = new WhatsAppMessage { Id = "msg1" };
+        var payload = new WebhookPayload
+        {
+            Entry = new List<WhatsAppEntry>
+            {
+                new WhatsAppEntry
+                {
+                    Changes = new List<WhatsAppChange>
+                    {
+                        new WhatsAppChange
+                        {
+                            Value = new WhatsAppValue
+                            {
+                                Messages = new List<WhatsAppMessage> { message }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        _mockCacheService.Setup(c => c.ExistsAsync($"webhook_msg_{message.Id}")).ReturnsAsync(true);
 
         // Act
         var result = await _controller.ReceiveMessage(payload);
 
         // Assert
-        result.Should().BeOfType<BadRequestResult>();
-        _mockHandler.Verify(h => h.HandleAsync(It.IsAny<WhatsAppMessage>()), Times.Never);
+        result.Should().BeOfType<OkResult>();
+        _mockJobService.Verify(j => j.EnqueueAsync(It.IsAny<ProcessIncomingMessageJob>(), default), Times.Never);
     }
 }

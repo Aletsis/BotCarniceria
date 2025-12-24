@@ -1,4 +1,5 @@
 using BotCarniceria.Application.Bot.Interfaces;
+using BotCarniceria.Core.Application.Interfaces;
 using BotCarniceria.Application.Bot.StateMachine.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
