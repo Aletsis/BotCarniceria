@@ -239,6 +239,7 @@ public class CheckSessionTimeoutsCommandHandler : IRequestHandler<CheckSessionTi
         int.TryParse(warningMinutesStr, out int warningMinutes);
 
         await ProcessExpiringSessionsAsync(warningMinutes, timeoutMinutes, cancellationToken);
+        await ProcessExpiring24hSessionsAsync(cancellationToken);
         await ProcessExpiredSessionsAsync(timeoutMinutes, cancellationToken);
 
         return Unit.Value;
@@ -266,6 +267,44 @@ public class CheckSessionTimeoutsCommandHandler : IRequestHandler<CheckSessionTi
                 session.MarcarNotificacionTimeoutEnviada();
                 await _unitOfWork.Sessions.UpdateAsync(session);
             }
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task ProcessExpiring24hSessionsAsync(CancellationToken cancellationToken)
+    {
+        // 1. Get Admins and Supervisors
+        var adminSpec = new BotCarniceria.Core.Application.Specifications.AdminsAndSupervisorsWithPhoneSpecification();
+        var targetUsers = await _unitOfWork.Users.FindAsync(adminSpec);
+        var targetPhones = targetUsers.Select(u => u.Telefono).ToHashSet();
+
+        if (!targetPhones.Any()) return; 
+
+        // 2. Get Sessions expiring in 24h
+        var spec = new BotCarniceria.Core.Application.Specifications.Expiring24hSessionsSpecification(23); // Warn at 23h
+        var expiringSessions = await _unitOfWork.Sessions.FindAsync(spec);
+
+        // 3. Filter sessions by target phones
+        var sessionsToNotify = expiringSessions.Where(s => targetPhones.Contains(s.NumeroTelefono)).ToList();
+
+        if (sessionsToNotify.Any())
+        {
+            _logger.LogInformation("Found {Count} admin/supervisor sessions closing on 24h limit.", sessionsToNotify.Count);
+
+            foreach (var session in sessionsToNotify)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                await _whatsappService.SendTextMessageAsync(
+                    session.NumeroTelefono,
+                    "⚠️ *Aviso de inactividad prolongada*\n\nEstán por pasar 24 horas desde su último mensaje. Después de este tiempo el bot ya no podrá enviarle notificaciones hasta que usted nos escriba nuevamente."
+                );
+
+                session.MarcarNotificacion24hEnviada();
+                await _unitOfWork.Sessions.UpdateAsync(session);
+            }
+            // Save changes once after processing batch
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }

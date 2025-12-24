@@ -19,6 +19,7 @@ public class Conversacion : BaseEntity
     public DateTime? FechaExpiracion => UltimaActividad.AddMinutes(TimeoutEnMinutos);
 
     public bool NotificacionTimeoutEnviada { get; private set; }
+    public bool Notificacion24hEnviada { get; private set; }
 
     private Conversacion() { }
 
@@ -40,11 +41,17 @@ public class Conversacion : BaseEntity
     {
         UltimaActividad = DateTime.UtcNow;
         NotificacionTimeoutEnviada = false;
+        Notificacion24hEnviada = false;
     }
 
     public void MarcarNotificacionTimeoutEnviada()
     {
         NotificacionTimeoutEnviada = true;
+    }
+
+    public void MarcarNotificacion24hEnviada()
+    {
+        Notificacion24hEnviada = true;
     }
 
     public void CambiarEstado(ConversationState nuevoEstado)
