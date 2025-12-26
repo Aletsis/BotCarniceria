@@ -6,6 +6,7 @@
 @using MediatR
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
+@using BotCarniceria.Core.Domain.Enums
 @attribute [Authorize(Roles = "admin,supervisor")]
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
@@ -23,16 +24,16 @@
         <MudPaper Class="pa-4 mb-4">
             <MudGrid>
                 <MudItem xs="12" sm="6" md="4">
-                    <MudTextField @bind-Value="_searchString" 
+                    <MudTextField T="string" Value="_searchString"
+                                  ValueChanged="@(OnSearchChanged)"
                                   Label="Buscar" 
                                   Placeholder="Folio, Cliente, Teléfono..."
                                   Adornment="Adornment.Start" 
                                   AdornmentIcon="@Icons.Material.Filled.Search"
-                                  Immediate="true"
-                                  OnKeyUp="@(() => ApplyFilters())" />
+                                  Immediate="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="4">
-                    <MudSelect @bind-Value="_filtroEstado" Label="Estado" OnChange="@(() => ApplyFilters())">
+                    <MudSelect T="string" Value="_filtroEstado" ValueChanged="@(OnEstadoChanged)" Label="Estado">
                         <MudSelectItem Value="@("Todos")">Todos</MudSelectItem>
                         <MudSelectItem Value="@("Pendiente")">Pendiente</MudSelectItem>
                         <MudSelectItem Value="@("EnProceso")">En Proceso</MudSelectItem>
@@ -41,10 +42,10 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6" md="4">
-                    <MudDatePicker @bind-Date="_fechaFiltro" 
+                    <MudDatePicker Date="_fechaFiltro" 
+                                   DateChanged="@(OnFechaFiltroChanged)"
                                    Label="Fecha de Solicitud" 
-                                   Clearable="true"
-                                   OnChange="@(() => ApplyFilters())" />
+                                   Clearable="true" />
                 </MudItem>
             </MudGrid>
         </MudPaper>
@@ -182,11 +183,27 @@
         }
     }
 
-    private async Task ApplyFilters()
+    private void OnSearchChanged(string value)
     {
+        _searchString = value;
         ApplyFiltersLocal();
         StateHasChanged();
     }
+
+    private void OnEstadoChanged(string value)
+    {
+        _filtroEstado = value;
+        ApplyFiltersLocal();
+        StateHasChanged();
+    }
+
+    private void OnFechaFiltroChanged(DateTime? value)
+    {
+        _fechaFiltro = value;
+        ApplyFiltersLocal();
+        StateHasChanged();
+    }
+
 
     private void ApplyFiltersLocal()
     {
@@ -195,7 +212,7 @@
         // Filtro por fecha
         if (_fechaFiltro.HasValue)
         {
-            filtered = filtered.Where(s => s.FechaSolicitud.Date == _fechaFiltro.Value.Date);
+            filtered = filtered.Where(s => TimeZoneHelper.ToLocalTime(s.FechaSolicitud).Date == _fechaFiltro.Value.Date);
         }
 
         // Filtro por búsqueda
