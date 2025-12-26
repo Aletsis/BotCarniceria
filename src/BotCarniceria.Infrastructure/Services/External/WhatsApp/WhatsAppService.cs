@@ -430,6 +430,53 @@ public class WhatsAppService : IWhatsAppService
             return null;
         }
     }
+    
+    public async Task<string?> UploadMediaAsync(Stream mediaStream, string fileName, string mimeType)
+    {
+        try
+        {
+            var (phoneNumberId, accessToken) = await GetCredentialsAsync();
+            if (string.IsNullOrEmpty(phoneNumberId) || string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogWarning("Configuración de WhatsApp incompleta (DB)");
+                return null;
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            var url = $"{WhatsAppApiUrl}/{phoneNumberId}/media";
+
+            using var content = new MultipartFormDataContent();
+            
+            // Create a memory stream copy if necessary, or use the stream directly. 
+            // Often using the stream directly in StreamContent is fine.
+            using var fileContent = new StreamContent(mediaStream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
+
+            content.Add(fileContent, "file", fileName);
+            content.Add(new StringContent("whatsapp"), "messaging_product");
+
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await client.PostAsync(url, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                 dynamic? jsonResponse = JsonConvert.DeserializeObject(responseContent);
+                 return jsonResponse?.id;
+            }
+            else
+            {
+                _logger.LogError("Error uploading media: {StatusCode} - {Content}", response.StatusCode, responseContent);
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception uploading media");
+            return null;
+        }
+    }
 
     private string GetSavePath(string fileName) 
     {

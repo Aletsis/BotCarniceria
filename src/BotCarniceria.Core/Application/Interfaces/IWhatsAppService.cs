@@ -12,5 +12,6 @@ public interface IWhatsAppService
     // DTO overloads (we might need to define these DTOs or just use the primitive parameters if DTOs are not in Core Impl)
     // For now, I'll stick to primitives to minimize dependencies, or move Request objects to DTOs.
     Task<string?> DownloadMediaAsync(string mediaId);
+    Task<string?> UploadMediaAsync(Stream mediaStream, string fileName, string mimeType);
     Task<bool> ResendMessageAsync(string phoneNumber, string jsonPayload);
 }

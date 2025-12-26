@@ -161,6 +161,12 @@ public class WhatsAppServiceWithCircuitBreaker : IWhatsAppService
         return await _innerService.DownloadMediaAsync(mediaId);
     }
 
+    public async Task<string?> UploadMediaAsync(Stream mediaStream, string fileName, string mimeType)
+    {
+        // Pasamos la llamada directamente al servicio interno.
+        return await _innerService.UploadMediaAsync(mediaStream, fileName, mimeType);
+    }
+
     public async Task<bool> ResendMessageAsync(string phoneNumber, string jsonPayload)
     {
          return await ExecuteWithResilienceAsync(

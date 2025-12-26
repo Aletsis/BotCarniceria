@@ -1,0 +1,101 @@
+@page "/estados"
+@using BotCarniceria.Core.Application.CQRS.Commands
+@using MediatR
+@inject ISender Sender
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "admin,supervisor")]
+
+<PageTitle>Estados</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Subir Estado</MudText>
+
+<MudPaper Class="pa-4" MaxWidth="600px">
+    <MudText Typo="Typo.body1" Class="mb-4">Sube una imagen o video para usar como estado.</MudText>
+    
+    <MudForm @ref="form">
+        <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles" Accept=".jpg, .jpeg, .png, .mp4">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.CloudUpload">
+                    Seleccionar Archivo (Imagen/Video)
+                </MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
+        
+        @if (file != null)
+        {
+            <MudText Class="mt-2">@file.Name (@(file.Size / 1024) KB)</MudText>
+        }
+
+        <MudTextField @bind-Value="caption" Label="Comentario / Caption (Opcional)" Variant="Variant.Outlined" Class="mt-4" Lines="3" />
+
+        <div class="d-flex justify-end mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="UploadToWhatsApp" Disabled="@(file == null || uploading)">
+                @if (uploading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Subiendo...</MudText>
+                }
+                else
+                {
+                    <MudText>Subir Estado</MudText>
+                }
+            </MudButton>
+        </div>
+    </MudForm>
+</MudPaper>
+
+@if (!string.IsNullOrEmpty(lastMediaId))
+{
+    <MudAlert Severity="Severity.Success" Class="mt-4">
+        Estado subido exitosamente. ID de Media: @lastMediaId
+    </MudAlert>
+}
+
+@code {
+    private IBrowserFile? file;
+    private string caption = "";
+    private bool uploading = false;
+    private string? lastMediaId;
+    MudForm form;
+
+    private void UploadFiles(IBrowserFile file)
+    {
+        this.file = file;
+    }
+
+    private async Task UploadToWhatsApp()
+    {
+        if (file == null) return;
+        
+        uploading = true;
+        try
+        {
+            // Limit to 100MB
+            long maxFileSize = 100 * 1024 * 1024; 
+            
+            using var stream = file.OpenReadStream(maxFileSize);
+            
+            var command = new UploadEstadoCommand(stream, file.Name, file.ContentType, caption);
+            lastMediaId = await Sender.Send(command);
+            
+            if (lastMediaId != null)
+            {
+                Snackbar.Add("Estado subido correctamente a WhatsApp", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Error al subir estado", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+}
