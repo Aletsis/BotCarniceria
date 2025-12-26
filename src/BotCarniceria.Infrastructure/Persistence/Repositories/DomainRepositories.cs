@@ -100,6 +100,14 @@ public class SolicitudFacturaRepository : Repository<SolicitudFactura>, ISolicit
     {
     }
 
+    public override async Task<List<SolicitudFactura>> GetAllAsync()
+    {
+        return await _context.SolicitudesFactura
+            .Include(s => s.Cliente)
+            .OrderByDescending(s => s.FechaSolicitud)
+            .ToListAsync();
+    }
+
     public async Task<List<SolicitudFactura>> GetByClienteIdAsync(int clienteId)
     {
         return await _context.SolicitudesFactura
