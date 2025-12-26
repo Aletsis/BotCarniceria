@@ -253,7 +253,8 @@
         // Filtro por estado
         if (_filtroActivo.HasValue)
         {
-            filtered = filtered.Where(c => c.Activo == _filtroActivo.Value);
+            var estadoFiltro = _filtroActivo.Value;
+            filtered = filtered.Where(c => c.Activo == estadoFiltro);
         }
 
         // Ordenar por nombre
