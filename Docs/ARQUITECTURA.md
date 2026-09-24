@@ -1,74 +1,75 @@
 # 📐 Arquitectura del Sistema
 
-Este proyecto sigue los principios de **Clean Architecture** (Arquitectura Limpia) y **Domain-Driven Design (DDD)** para asegurar un código mantenible, escalable y testeable.
+Este proyecto está diseñado y construido siguiendo los principios de **Clean Architecture** (Arquitectura Limpia), **Domain-Driven Design (DDD)**, **CQRS** y **SOLID**, garantizando un alto grado de desacoplamiento, resiliencia, mantenibilidad y cobertura de pruebas.
+
+---
 
 ## 🏗️ Estructura de Capas
 
-El sistema está dividido en 4 capas concéntricas, donde las dependencias fluyen hacia adentro:
+El sistema se divide en 4 capas concéntricas donde las dependencias fluyen estrictamente hacia el interior:
 
 ```mermaid
 graph TD
-    API[Presentation.API / Blazor] --> Application
-    Infrastructure --> Application
-    Infrastructure --> Core
-    Application --> Core
+    UI[Presentation: Blazor & REST API] --> AppBot[Application: Bot & CQRS]
+    Infra[Infrastructure: Repositories, External Services, Hubs] --> AppBot
+    Infra --> Core[Domain Core]
+    AppBot --> Core
 ```
 
-### 1. Core (`BotCarniceria.Core`)
-Es el núcleo de la aplicación. No tiene dependencias externas.
-- **Entities**: Objetos de dominio (`Pedido`, `Cliente`, `Mensaje`).
-- **Interfaces**: Contratos de repositorios (`IOrderRepository`) y servicios (`ICacheService`).
-- **Specifications**: Lógica de consultas reutilizable (`PedidosActiveSpecification`).
-- **Domain Services**: Lógica pura de negocio.
-- **Value Objects**: Objetos inmutables (`Address`, `Money`).
+### 1. Domain Core (`BotCarniceria.Core.Domain`)
+El núcleo puro del sistema sin dependencias externas ni de frameworks:
+* **Entities**: `Pedido`, `Cliente`, `Mensaje`, `Conversacion`, `SolicitudFactura`, `Usuario`, `Configuracion`.
+* **Value Objects**: `Folio`, `DatosFacturacion`, etc.
+* **Domain Events**: `PedidoCreatedEvent`, `SolicitudFacturaCreadaDomainEvent`.
+* **Domain Services & Abstracciones**: `IDateTimeProvider`, `IUnitOfWork`, contratos de repositorios.
+* **Specifications**: Lógica de consulta encapsulada (`PedidosActiveSpecification`, `ClienteByPhoneNumberSpecification`, `SupervisorsWithPhoneSpecification`).
 
-### 2. Application (`BotCarniceria.Application.Bot` / `.Shared`)
-Contiene la lógica de la aplicación y coordinadores.
-- **Services**: Implementaciones de servicios de aplicación (`SessionService`).
-- **Handlers**: Manejadores de mensajes (`IncomingMessageHandler`) y estados (`MenuStateHandler`).
-- **DTOs**: Objetos de transferencia de datos.
-- **Interfaces**: Contratos definidos por la aplicación.
+### 2. Application Layer (`BotCarniceria.Core.Application` & `BotCarniceria.Application.Bot`)
+Contiene los casos de uso, orquestadores y la lógica de la máquina de estados:
+* **CQRS (Commands & Queries)**: Comandos y consultas gestionados por MediatR.
+* **Máquina de Estados Finita (FSM)**: Handlers para cada estado de la conversación (`IConversationStateHandler`).
+* **Event Handlers**: Manejadores asíncronos para eventos de dominio (`PedidoCreatedEventHandler`).
+* **Strategy Handlers**: Procesadores polimórficos de tipos de mensajes entrantes.
 
-### 3. Infrastructure (`BotCarniceria.Infrastructure`)
-Implementa las interfaces definidas en Core y Application.
-- **Persistence**: Entity Framework Core, Repositorios (`OrderRepository`), `UnitOfWork`.
-- **External Services**: Cliente de WhatsApp API, Servicios de Impresión TCP/IP.
-- **Caching**: Implementación de Redis/MemoryCache.
+### 3. Infrastructure Layer (`BotCarniceria.Infrastructure`)
+Implementaciones concretas de la persistencia y de integraciones con el mundo exterior:
+* **Persistence**: Entity Framework Core 8, `BotCarniceriaDbContext`, Repositorios, Migraciones, `DbInitializer`.
+* **External Clients**: `WhatsAppService` (Meta Graph API), `PrintingService` (Raw ESC/POS TCP Sockets).
+* **Caching & Background**: `CacheService` (MemoryCache/Redis), Hangfire Job Processing.
+* **Real-time Hubs**: ASP.NET Core SignalR (`ChatHub`).
 
-### 4. Presentation (`.API` / `.Blazor`)
-Puntos de entrada de la aplicación.
-- **API**: Controladores REST, Webhook Endpoint de WhatsApp.
-- **Blazor**: Interfaz de usuario administrativa (Dashboard), Componentes MudBlazor.
+### 4. Presentation Layer (`BotCarniceria.Presentation.*`)
+Puntos de entrada de usuarios y sistemas externos:
+* **`Presentation.API`**: Controladores Webhook de WhatsApp con validación criptográfica HMAC-SHA256 y endpoints REST.
+* **`Presentation.Blazor`**: Panel administrativo y operativo en tiempo real con MudBlazor + Portal público para solicitud de facturas.
 
-## 🧩 Patrones de Diseño Implementados
+---
 
-### Repository & Unit of Work
-Abstracción completa del acceso a datos.
-- **Repository**: Colección en memoria de objetos de dominio. Provee métodos CRUD y de búsqueda.
-- **UnitOfWork**: Mantiene una lista de objetos afectados por una transacción de negocio y coordina la escritura de cambios y la resolución de problemas de concurrencia. Garantiza transaccionalidad (Commit/Rollback).
+## 🧩 Patrones de Diseño Principales
 
-### Specification Pattern
-Encapsula la lógica de consulta de dominio en objetos individuales.
-- Permite combinar reglas de negocio (`b.And(c).Or(d)`).
-- Desacopla la lógica de consulta de los repositorios.
-- Facilita el testing de reglas de negocio complejas.
+### 1. CQRS (Command Query Responsibility Segregation) con MediatR
+Separa las operaciones de lectura (queries de alto rendimiento sin sobrecarga de tracking) de las operaciones de escritura (commands que mutan el modelo de dominio mediante transacciones controladas).
 
-### Strategy Pattern
-Utilizado para el manejo extensible de mensajes y estados.
-- `IncomingMessageHandler` selecciona la estrategia adecuada (`TextMessageTypeHandler`, `InteractiveMessageTypeHandler`) basada en el tipo de mensaje entrante.
-- Elimina sentencias `switch` gigantes y facilita agregar nuevos tipos de mensajes.
+### 2. Domain Events
+Permite el desacoplamiento de efectos secundarios. Cuando un pedido es creado, la entidad dispara un `PedidoCreatedEvent`, que es gestionado asíncronamente para:
+1. Encolar la impresión física del ticket en la impresora de comandas.
+2. Notificar por SignalR a los operadores conectados al dashboard.
 
-### State Pattern (Finite State Machine)
-Controla el flujo de conversación del usuario.
-- Cada estado (`Menu`, `AskingName`, `TakingOrder`) es una clase separada.
-- Centraliza la lógica de transición y validación de entrada para ese estado específico.
+### 3. Repository & Unit of Work
+Abstracción de acceso a datos con control transaccional estricto. Todas las operaciones de escritura en un flujo se confirman en una sola transacción atómica (`CommitAsync`).
 
-### Factory Pattern
-- `StateHandlerFactory`: Encapsula la creación compleja de handlers de estado, inyectando dependencias necesarias.
+### 4. Specification Pattern
+Permite construir consultas de base de datos reutilizables, componibles y testeables sin filtrar detalles de Entity Framework hacia la capa de negocio.
 
-## 🚀 Decisiones Técnicas Clave
+### 5. Strategy & State Pattern (FSM)
+* **Strategy**: Selección dinámica de procesamiento según el tipo de mensaje entrante (Texto, Botón, Lista, Ubicación).
+* **State**: Encapsulamiento del comportamiento y transiciones de la conversación en clases individuales por cada estado.
 
-1. **Sesiones Persistentes**: El estado de la conversación se guarda en base de datos y se cachea en memoria para velocidad. Esto permite escalar horizontalmente si se usa Redis.
-2. **Manejo de Errores**: Middleware global de excepciones y bloques Try/Catch en UnitOfWork para asegurar integridad de datos.
-3. **Validación**: FluentValidation para validar DTOs y comandos antes de procesarlos.
-4. **Loggin Estructurado**: Serilog para trazabilidad completa de cada mensaje y error.
+---
+
+## 🔒 Seguridad y Resiliencia
+
+1. **Autenticación y RBAC**: Sistema de roles (`Admin`, `Supervisor`, `Editor`, `Viewer`) con hashing seguro de contraseñas.
+2. **Validación Criptográfica de Webhooks**: Verificación del header `X-Hub-Signature-256` en cada mensaje entrante para garantizar la autenticidad del remitente (Meta).
+3. **Resiliencia HTTP (Circuit Breaker)**: Protección contra caídas o lentitud de APIs externas mediante políticas de Polly y colas de reintento en Hangfire.
+4. **Persistencia UTC y Globalización**: Almacenamiento homogéneo en UTC en base de datos y conversión transparente a la zona horaria del negocio con `IDateTimeProvider`.

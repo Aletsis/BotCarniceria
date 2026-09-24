@@ -155,13 +155,22 @@ sequenceDiagram
 
 ## Integración con Sistema Existente
 
-### Notificaciones a Administradores
+### Notificaciones Automáticas por WhatsApp a Supervisores
+Al crearse una nueva solicitud mediante `CreateSolicitudFacturaCommandHandler`:
+1. El handler consulta a todos los usuarios con rol `Supervisor` que tengan un número de teléfono configurado (`SupervisorsWithPhoneSpecification`).
+2. Se envía un mensaje automático por WhatsApp a cada supervisor con:
+   - Nombre y RFC del cliente.
+   - Datos fiscales y dirección completa.
+   - Folio del ticket, total de la compra y uso de CFDI.
+3. El proceso está protegido contra fallos (`try-catch`), de modo que si el envío del mensaje falla, la solicitud de factura se almacena con éxito en la base de datos.
+
+### Gestión en el Dashboard
 La solicitud de factura se guarda en la base de datos con estado "Pendiente" y puede ser gestionada desde:
 - **Página de Facturas** (`/facturas`) - Solo Admin/Supervisor
-- Los administradores pueden:
+- Los administradores y supervisores pueden:
   - Ver todas las solicitudes
   - Cambiar estado (Pendiente → En Proceso → Completada/Rechazada)
-  - Ver detalles completos
+  - Ver detalles fiscales y de ticket completos
 
 ### Estados de Solicitud
 - **Pendiente**: Recién creada

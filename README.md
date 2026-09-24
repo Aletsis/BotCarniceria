@@ -40,13 +40,27 @@ Sistema profesional de Bot de WhatsApp para gestión de pedidos de carnicería, 
 - **Integración**: WhatsApp Business API (Meta)
 - **Herramientas**: Serilog, Mapster/AutoMapper, FluentValidation
 
-## 📚 Documentación Técnica
+## 📚 Documentación del Proyecto
 
-Para profundizar en la implementación técnica, consulta los siguientes documentos en la carpeta `Docs/`:
+El proyecto cuenta con un conjunto completo de documentación en la carpeta `Docs/` clasificada según su propósito:
 
-- [📐 ARQUITECTURA.md](Docs/ARQUITECTURA.md) - Arquitectura Clean, capas y patrones implementados.
-- [📩 MANEJO_MENSAJES.md](Docs/MANEJO_MENSAJES.md) - Explicación detallada del flujo de mensajes, estados y handlers.
-- [🧩 COMPONENTES.md](Docs/COMPONENTES.md) - Catálogo de servicios, repositorios y especificaciones clave.
+### 📖 Manuales y Guías de Uso
+- [📖 MANUAL_OPERACION.md](Docs/MANUAL_OPERACION.md) - Manual de usuario para operadores, supervisores y administradores (Dashboard, atención de chats, pedidos, tickets e incidencias).
+- [🛠️ MANUAL_TECNICO.md](Docs/MANUAL_TECNICO.md) - Guía técnica para desarrolladores y DevOps (despliegue, configuración, base de datos, SignalR, Hangfire y troubleshooting).
+
+### 🏛️ Arquitectura y Componentes
+- [📐 ARQUITECTURA.md](Docs/ARQUITECTURA.md) - Clean Architecture, DDD, CQRS, MediatR, Domain Events y patrones de diseño.
+- [🧩 COMPONENTES.md](Docs/COMPONENTES.md) - Catálogo exhaustivo de Repositorios, Servicios, Comandos/Consultas CQRS y Handlers de Estado.
+- [📩 MANEJO_MENSAJES.md](Docs/MANEJO_MENSAJES.md) - Flujo de Webhook de WhatsApp y Máquina de Estados Finita (FSM).
+
+### ⚙️ Módulos Específicos y Reglas de Negocio
+- [🧾 PAGINA_SOLICITUD_FACTURA.md](Docs/PAGINA_SOLICITUD_FACTURA.md) - Portal público de facturación electrónica y notificaciones a supervisores.
+- [🔐 PERMISOS_POR_ROL.md](Docs/PERMISOS_POR_ROL.md) - Matriz de permisos de seguridad y roles (`Admin`, `Supervisor`, `Editor`, `Viewer`).
+- [⏰ TIMEZONE_IMPLEMENTATION.md](Docs/TIMEZONE_IMPLEMENTATION.md) - Manejo de zona horaria del negocio y persistencia en UTC.
+- [🔬 CLEAN_ARCHITECTURE_ANALYSIS.md](Docs/CLEAN_ARCHITECTURE_ANALYSIS.md) - Análisis formal de cumplimiento de Clean Architecture y DDD.
+
+### 🧪 Pruebas y Validación
+- [🧪 tests/ManualTests/README.md](tests/ManualTests/README.md) - Herramientas y scripts para simulación local de Webhooks de WhatsApp (E2E).
 
 ## 🚀 Guía de Inicio Rápido
 
