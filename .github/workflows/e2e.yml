@@ -1,0 +1,71 @@
+name: E2E Tests (Playwright)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e-tests:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "YourStrong@Password123"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Password123' -Q 'SELECT 1' -C"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore BotCarniceria.sln
+
+      - name: Build Solution
+        run: dotnet build BotCarniceria.sln --configuration Release --no-restore
+
+      - name: Install Playwright Browsers
+        run: |
+          pwsh tests/BotCarniceria.E2ETests/bin/Release/net9.0/playwright.ps1 install --with-deps || pwsh tests/BotCarniceria.E2ETests/bin/Debug/net9.0/playwright.ps1 install --with-deps
+
+      - name: Run E2E Tests
+        env:
+          E2E_CONNECTION_STRING: "Server=localhost,1433;Database=BotCarniceriaE2E;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true;"
+        run: |
+          dotnet test tests/BotCarniceria.E2ETests/BotCarniceria.E2ETests.csproj \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=e2e_results.trx" \
+            --verbosity normal
+
+      - name: Upload E2E Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            **/TestResults/*.trx
+          retention-days: 14

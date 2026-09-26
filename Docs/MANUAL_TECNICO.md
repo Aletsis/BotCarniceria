@@ -210,7 +210,39 @@ dotnet test
 
 ## 10. Guía de Despliegue en Producción
 
+### Pipeline Automatizado de CI/CD (GitHub Actions)
+
+La plataforma cuenta con integración y entrega continua configurada mediante GitHub Actions:
+
+1. **Integración Continua (`.github/workflows/ci.yml`)**:
+   - Se dispara en cada `push` o `pull_request` a `main`.
+   - Restaura dependencias y compila la solución en modo `Release`.
+   - Ejecuta las pruebas automatizadas (Unit, Architecture, Integration, API, Blazor) con recolección de métricas de cobertura Cobertura.
+   - Genera y adjunta el reporte de cobertura en el resumen de la ejecución.
+
+2. **Entrega Continua / Publicación de Artefactos (`.github/workflows/cd.yml`)**:
+   - Se ejecuta en cada `push` a `main` o al crear un tag de versión (`v*.*.*`).
+   - Compila y publica `BotCarniceria.Presentation.API` y `BotCarniceria.Presentation.Blazor`.
+   - Genera archivos comprimidos `.zip` (`botcarniceria-api.zip` y `botcarniceria-blazor.zip`) y los sube como artefactos de workflow (disponibles por 30 días).
+   - Si se etiqueta un commit con un tag (ej: `git tag v1.0.0 && git push origin v1.0.0`), crea automáticamente una **GitHub Release** formal adjuntando los paquetes `.zip`.
+
+3. **Pruebas End-to-End (`.github/workflows/e2e.yml`)**:
+   - Se ejecuta bajo demanda (`workflow_dispatch`) con un contenedor Docker de SQL Server 2022 y navegadores Playwright.
+
+---
+
 ### Opción A: Despliegue en Linux (Ubuntu/Debian) con Nginx y Systemd
+
+Los artefactos `.zip` generados por el CD pueden descomprimirse directamente en el servidor:
+```bash
+# Ejemplo: Descomprimir artefactos descargados del release
+unzip -o botcarniceria-api.zip -d /var/www/botcarniceria-api
+unzip -o botcarniceria-blazor.zip -d /var/www/botcarniceria-blazor
+systemctl restart botcarniceria-api
+systemctl restart botcarniceria-blazor
+```
+
+O compilar manualmente en el servidor:
 
 1. **Publicar las aplicaciones**:
    ```bash

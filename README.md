@@ -1,5 +1,8 @@
 # 🥩 Bot de WhatsApp para Carnicería
 
+![CI - Build & Test](https://github.com/Aletsis/BotCarniceria/actions/workflows/ci.yml/badge.svg)
+![CD - Publish & Release](https://github.com/Aletsis/BotCarniceria/actions/workflows/cd.yml/badge.svg)
+
 Sistema profesional de Bot de WhatsApp para gestión de pedidos de carnicería, construido con **Clean Architecture**, **DDD** y **SOLID Principles**. Desarrollado con ASP.NET Core 8.0, Blazor Server y MudBlazor.
 
 ## 📋 Características Principales
@@ -103,6 +106,22 @@ El proyecto sigue una metodología estricta de **Clean Architecture**.
 2. **Application**: Implementar Servicios, Handlers y Casos de Uso.
 3. **Infrastructure**: Implementar Repositorios, Servicios Externos (WhatsApp) y DB Context.
 4. **Presentation**: Exponer vía API o UI (Blazor).
+
+## 🚀 Integración y Despliegue Continuo (CI/CD)
+
+El repositorio cuenta con pipelines automatizados con **GitHub Actions**:
+
+- **CI (`.github/workflows/ci.yml`)**:
+  - Compilación automática en Release con .NET 8 y 9.
+  - Ejecución de suites de pruebas (unitarias, arquitectura, integración, componentes).
+  - Recolección y generación de reporte de cobertura con Coverlet y ReportGenerator (publicado directamente en el Step Summary de GitHub Actions).
+  - Se ejecuta en cada `push` o `pull_request` a la rama `main`.
+- **CD (`.github/workflows/cd.yml`)**:
+  - Compilación y publicación optimizada de `BotCarniceria.Presentation.API` y `BotCarniceria.Presentation.Blazor`.
+  - Empaquetado automático en archivos `.zip` listos para desplegar (`botcarniceria-api.zip`, `botcarniceria-blazor.zip`).
+  - Publicación automática de GitHub Releases al crear tags de versión (ej. `v1.0.0`).
+- **E2E Tests (`.github/workflows/e2e.yml`)**:
+  - Ejecución bajo demanda (`workflow_dispatch`) de pruebas de interfaz de usuario con Playwright y contenedor de SQL Server 2022.
 
 ## 📄 Licencia
 

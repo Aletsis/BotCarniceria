@@ -1,0 +1,83 @@
+name: CI - Build & Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test Solution
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore BotCarniceria.sln
+
+      - name: Build solution
+        run: dotnet build BotCarniceria.sln --configuration Release --no-restore
+
+      - name: Run Automated Tests
+        run: |
+          dotnet test BotCarniceria.sln \
+            --configuration Release \
+            --no-build \
+            --filter "FullyQualifiedName!~E2ETests" \
+            --collect:"XPlat Code Coverage" \
+            --settings:"coverlet.runsettings" \
+            --results-directory:"TestResults" \
+            --logger "trx;LogFileName=test_results.trx" \
+            --verbosity normal
+
+      - name: Install ReportGenerator
+        if: always()
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      - name: Generate Code Coverage Report
+        if: always()
+        run: |
+          reportgenerator \
+            "-reports:TestResults/**/coverage.cobertura.xml" \
+            "-targetdir:TestResults/CoverageReport" \
+            "-reporttypes:HtmlInline;Cobertura;MarkdownSummaryGithub" \
+            "-filefilters:-*Migrations*;-*ModelSnapshot*;-*Designer.cs;-*Configuration*"
+
+      - name: Publish Coverage to Job Summary
+        if: always()
+        run: |
+          if [ -f "TestResults/CoverageReport/SummaryGithub.md" ]; then
+            cat TestResults/CoverageReport/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Test & Coverage Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-results
+          path: |
+            TestResults/**/*.trx
+            TestResults/CoverageReport/
+          retention-days: 14

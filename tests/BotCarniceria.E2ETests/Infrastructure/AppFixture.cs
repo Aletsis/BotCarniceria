@@ -39,7 +39,9 @@ public class AppFixture : IDisposable
         };
         
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
-        startInfo.Environment["ConnectionStrings__DefaultConnection"] = "Server=(localdb)\\mssqllocaldb;Database=BotCarniceriaE2E;Trusted_Connection=True;MultipleActiveResultSets=true";
+        var defaultConn = Environment.GetEnvironmentVariable("E2E_CONNECTION_STRING")
+            ?? "Server=(localdb)\\mssqllocaldb;Database=BotCarniceriaE2E;Trusted_Connection=True;MultipleActiveResultSets=true";
+        startInfo.Environment["ConnectionStrings__DefaultConnection"] = defaultConn;
 
         // Cleanup DB before starting
         try 

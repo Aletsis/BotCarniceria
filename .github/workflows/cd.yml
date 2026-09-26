@@ -1,0 +1,84 @@
+name: CD - Publish & Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*.*.*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-and-package:
+    name: Publish Applications & Package Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore BotCarniceria.sln
+
+      - name: Publish API Application
+        run: |
+          dotnet publish src/BotCarniceria.Presentation.API/BotCarniceria.Presentation.API.csproj \
+            -c Release \
+            -o ./publish/api \
+            --no-restore
+
+      - name: Publish Blazor Application
+        run: |
+          dotnet publish src/BotCarniceria.Presentation.Blazor/BotCarniceria.Presentation.Blazor.csproj \
+            -c Release \
+            -o ./publish/blazor \
+            --no-restore
+
+      - name: Create Zip Archives
+        run: |
+          mkdir -p ./dist
+          (cd ./publish/api && zip -r ../../dist/botcarniceria-api.zip .)
+          (cd ./publish/blazor && zip -r ../../dist/botcarniceria-blazor.zip .)
+
+      - name: Upload API Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: botcarniceria-api
+          path: ./dist/botcarniceria-api.zip
+          retention-days: 30
+
+      - name: Upload Blazor Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: botcarniceria-blazor
+          path: ./dist/botcarniceria-blazor.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/botcarniceria-api.zip
+            ./dist/botcarniceria-blazor.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
