@@ -142,9 +142,8 @@ public class ClientsTests : IAsyncLifetime
             .ReturnsAsync(dialogReference.Object);
 
         // Act
-        var newButton = cut.FindComponents<MudButton>()
-            .FirstOrDefault(b => b.Markup.Contains("Nuevo"));
-        newButton?.Find("button").Click();
+        var newButton = cut.FindAll("button").First(b => b.TextContent.Contains("Nuevo"));
+        newButton.Click();
 
         // Assert
         dialogServiceMock.Verify(d => d.ShowAsync<EditClientDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once);
@@ -166,7 +165,6 @@ public class ClientsTests : IAsyncLifetime
 
         var authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "admin") }, "Test")));
         var cut = Context.Render<Clients>(p => p.AddCascadingValue(Task.FromResult(authState)));
-        cut.WaitForState(() => cut.FindAll("tr").Count >= 2);
 
         // Mock Dialog Service for Confirmation
         var dialogServiceMock = Mock.Get(Context.Services.GetService<IDialogService>()!);
@@ -175,11 +173,13 @@ public class ClientsTests : IAsyncLifetime
         dialogServiceMock.Setup(d => d.ShowAsync<BotCarniceria.Presentation.Blazor.Components.Shared.ConfirmDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()))
             .ReturnsAsync(dialogReference.Object);
 
+        // Wait for client to be rendered
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Juan Perez"));
+
         // Act
-        // Find the toggle button (it's an IconButton with specific icon or tooltip)
-        // We can look for the tooltip text "Desactivar" or the icon
-        var toggleButton = cut.FindAll("button").FirstOrDefault(b => b.OuterHtml.Contains("Desactivar"));
-        toggleButton?.Click();
+        // Find the toggle button (it's an IconButton with aria-label)
+        var toggleButton = cut.Find("button[aria-label='Desactivar cliente']");
+        toggleButton.Click();
 
         // Assert
         // Verify dialog was shown

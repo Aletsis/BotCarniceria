@@ -52,14 +52,14 @@
                                Size="Size.Small" 
                                Color="Color.Primary"
                                OnClick="@(() => OnViewDetails.InvokeAsync(pedido))" 
-                               AriaLabel="Ver detalles del pedido" />
+                               aria-label="Ver detalles del pedido" />
             </MudTooltip>
             <MudTooltip Text="Imprimir">
                 <MudIconButton Icon="@Icons.Material.Filled.Print" 
                                Size="Size.Small" 
                                Color="Color.Secondary"
                                OnClick="@(() => OnPrint.InvokeAsync(pedido))" 
-                               AriaLabel="Imprimir comprobante" />
+                               aria-label="Imprimir comprobante" />
             </MudTooltip>
         </MudTd>
     </RowTemplate>

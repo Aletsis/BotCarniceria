@@ -88,7 +88,7 @@ public class WhatsAppServiceTests
         result.Should().BeTrue();
         _mockNotificationService.Verify(x => x.NotifyNewMessageAsync(phoneNumber, message), Times.Once);
         _mockUnitOfWork.Verify(x => x.Messages.AddAsync(It.IsAny<Mensaje>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]

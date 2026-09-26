@@ -184,8 +184,11 @@ public class OrdersTests : IAsyncLifetime
         dialogServiceMock.Setup(d => d.ShowAsync<PedidoDetailDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()))
             .ReturnsAsync(dialogReference.Object);
 
+        // Wait for order to be rendered
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("P-001"));
+
         // Act
-        var detailsButton = cut.WaitForElement("button[aria-label='Ver detalles del pedido']");
+        var detailsButton = cut.Find("button[aria-label='Ver detalles del pedido']");
         detailsButton.Click();
 
         // Assert

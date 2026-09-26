@@ -127,21 +127,21 @@
                                        Size="Size.Small" 
                                        Color="Color.Primary"
                                        OnClick="@(() => AbrirDialogoEditar(cliente))" 
-                                       AriaLabel="Editar cliente" />
+                                       aria-label="Editar cliente" />
                     </MudTooltip>
                     <MudTooltip Text="@(cliente.Activo ? "Desactivar" : "Activar")">
                         <MudIconButton Icon="@(cliente.Activo ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)" 
                                        Size="Size.Small" 
                                        Color="@(cliente.Activo ? Color.Error : Color.Success)"
                                        OnClick="@(() => ToggleEstado(cliente))" 
-                                       AriaLabel="@(cliente.Activo ? "Desactivar cliente" : "Activar cliente")" />
+                                       aria-label="@(cliente.Activo ? "Desactivar cliente" : "Activar cliente")" />
                     </MudTooltip>
                     <MudTooltip Text="Ver detalles">
                         <MudIconButton Icon="@Icons.Material.Filled.Info" 
                                        Size="Size.Small" 
                                        Color="Color.Info"
                                        OnClick="@(() => MostrarDetalles(cliente))" 
-                                       AriaLabel="Ver detalles del cliente" />
+                                       aria-label="Ver detalles del cliente" />
                     </MudTooltip>
                 </MudTd>
             </RowTemplate>
