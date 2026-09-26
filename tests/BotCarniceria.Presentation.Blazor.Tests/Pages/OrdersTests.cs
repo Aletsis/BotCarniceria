@@ -136,13 +136,13 @@ public class OrdersTests : IAsyncLifetime
     public void OrdersPage_ShouldFilterByDefaultDateForEditor()
     {
         // Arrange
-        var yesterday = DateTime.Today.AddDays(-1);
-        var today = DateTime.Today;
+        var today = BotCarniceria.Shared.Helpers.TimeZoneHelper.Now;
+        var yesterday = today.AddDays(-1);
 
         var orders = new List<PedidoDto>
         {
-            new PedidoDto { PedidoID = 1, Folio = "P-Old", Fecha = yesterday, Estado = "EnEspera" },
-            new PedidoDto { PedidoID = 2, Folio = "P-New", Fecha = today, Estado = "EnEspera" }
+            new PedidoDto { PedidoID = 1, Folio = "P-Old", Fecha = BotCarniceria.Shared.Helpers.TimeZoneHelper.ToUtcTime(yesterday), Estado = "EnEspera" },
+            new PedidoDto { PedidoID = 2, Folio = "P-New", Fecha = BotCarniceria.Shared.Helpers.TimeZoneHelper.ToUtcTime(today), Estado = "EnEspera" }
         };
         
         _mockMediator.Setup(m => m.Send(It.IsAny<GetAllPedidosQuery>(), It.IsAny<CancellationToken>()))
@@ -159,9 +159,7 @@ public class OrdersTests : IAsyncLifetime
         var cut = Context.Render<Orders>(p => p.AddCascadingValue(Task.FromResult(authState)));
 
         // Assert
-        cut.WaitForState(() => cut.FindAll("tr").Count >= 2); 
-        // Should only show P-New (plus header)
-        cut.Markup.Should().Contain("P-New");
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("P-New"));
         cut.Markup.Should().NotContain("P-Old");
     }
 
@@ -169,7 +167,7 @@ public class OrdersTests : IAsyncLifetime
     public void OrdersPage_ShouldViewDetails()
     {
         // Arrange
-        var order = new PedidoDto { PedidoID = 1, Folio = "P-001", ClienteNombre = "Cliente 1", Fecha = DateTime.Now, Estado = "EnEspera" };
+        var order = new PedidoDto { PedidoID = 1, Folio = "P-001", ClienteNombre = "Cliente 1", Fecha = DateTime.UtcNow, Estado = "EnEspera" };
         var orders = new List<PedidoDto> { order };
         
         _mockMediator.Setup(m => m.Send(It.IsAny<GetAllPedidosQuery>(), It.IsAny<CancellationToken>()))
@@ -178,7 +176,6 @@ public class OrdersTests : IAsyncLifetime
         var authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "admin") }, "TestAuth")));
 
         var cut = Context.Render<Orders>(p => p.AddCascadingValue(Task.FromResult(authState)));
-        cut.WaitForState(() => cut.FindAll("tr").Count >= 2);
 
         // Mock Dialog Service
         var dialogServiceMock = Mock.Get(Context.Services.GetService<IDialogService>()!);
@@ -188,23 +185,7 @@ public class OrdersTests : IAsyncLifetime
             .ReturnsAsync(dialogReference.Object);
 
         // Act
-        // Find View Details button (Info icon)
-        // Adjust selector based on actual implementation of OrderTable/Row
-        // Assuming OrderTable renders rows with an action column containing the button.
-        // We look for a button with "Ver detalles" tooltip or Info icon
-        // Or simply finding the IconButton by AriaLabel if available
-        
-        // Since I can't easily see the AriaLabel in the rendered markup without running it, 
-        // I'll rely on finding the button in the first row's actions.
-        // But since OrderTable is a component, I can check if event callback works or find button inside.
-        
-        // Looking at Orders.razor: <OrderTable ... OnViewDetails="VerDetalles" ... />
-        // I need to trigger the event on OrderTable or find the button inside it.
-        // The easiest way is to find the button inside the OrderTable component.
-        
-        // Use robust selector based on accessibility label
-        var detailsButton = cut.Find("button[aria-label='Ver detalles del pedido']");
-        
+        var detailsButton = cut.WaitForElement("button[aria-label='Ver detalles del pedido']");
         detailsButton.Click();
 
         // Assert

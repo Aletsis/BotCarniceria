@@ -218,6 +218,15 @@ public class WhatsAppService : IWhatsAppService
 
         try
         {
+            var (phoneNumberId, accessToken) = await GetCredentialsAsync();
+
+            if (string.IsNullOrEmpty(phoneNumberId) || string.IsNullOrEmpty(accessToken))
+            {
+                _logger.LogWarning("Configuración de WhatsApp incompleta (DB)");
+                if (messageId.HasValue) await MarkMessageAsFailedAsync(messageId.Value, "Configuración incompleta");
+                return false;
+            }
+
             // 1. Persist initial "Pendiente" message if not already done
             if (messageId == null)
             {
@@ -245,15 +254,6 @@ public class WhatsAppService : IWhatsAppService
                 messageId = outgoingMsg.MensajeID;
             }
 
-            var (phoneNumberId, accessToken) = await GetCredentialsAsync();
-
-            if (string.IsNullOrEmpty(phoneNumberId) || string.IsNullOrEmpty(accessToken))
-            {
-                _logger.LogWarning("Configuración de WhatsApp incompleta (DB)");
-                if (messageId.HasValue) await MarkMessageAsFailedAsync(messageId.Value, "Configuración incompleta");
-                return false;
-            }
-
             var client = _httpClientFactory.CreateClient();
             var url = $"{WhatsAppApiUrl}/{phoneNumberId}/messages";
 
@@ -275,24 +275,21 @@ public class WhatsAppService : IWhatsAppService
                 _logger.LogInformation("Mensaje enviado exitosamente a {PhoneNumber}", payload.To);
                 
                 // UPDATE MESSAGE TO SENT
-                if (messageId.HasValue)
+                var msgToUpdate = outgoingMsg ?? (messageId.HasValue ? await _unitOfWork.Messages.GetByIdAsync(messageId.Value) : null);
+                if (msgToUpdate != null)
                 {
-                    var msgToUpdate = await _unitOfWork.Messages.GetByIdAsync(messageId.Value);
-                    if (msgToUpdate != null)
+                    try 
                     {
-                        try 
-                        {
-                            dynamic? jsonResponse = JsonConvert.DeserializeObject(responseContent);
-                            string? waId = jsonResponse?.messages?[0]?.id;
-                            msgToUpdate.MarcarComoEnviado(waId);
-                        }
-                        catch (Exception ex) 
-                        { 
-                            _logger.LogWarning("No se pudo parsear el ID de mensaje de WhatsApp: {Error}", ex.Message);
-                            msgToUpdate.MarcarComoEnviado();
-                        }
-                        await _unitOfWork.SaveChangesAsync();
+                        dynamic? jsonResponse = JsonConvert.DeserializeObject(responseContent);
+                        string? waId = jsonResponse?.messages?[0]?.id;
+                        msgToUpdate.MarcarComoEnviado(waId);
                     }
+                    catch (Exception ex) 
+                    { 
+                        _logger.LogWarning("No se pudo parsear el ID de mensaje de WhatsApp: {Error}", ex.Message);
+                        msgToUpdate.MarcarComoEnviado();
+                    }
+                    await _unitOfWork.SaveChangesAsync();
                 }
 
                 // Notify Frontend

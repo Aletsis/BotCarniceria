@@ -33,7 +33,12 @@ public class WhatsAppServiceTests
         // Setup Message Repository Mock
         _mockMessageRepository = new Mock<IMessageRepository>();
         _mockUnitOfWork.Setup(x => x.Messages).Returns(_mockMessageRepository.Object);
-        _mockMessageRepository.Setup(x => x.AddAsync(It.IsAny<Mensaje>())).ReturnsAsync((Mensaje m) => m);
+        Mensaje? lastAddedMessage = null;
+        _mockMessageRepository.Setup(x => x.AddAsync(It.IsAny<Mensaje>()))
+            .Callback<Mensaje>(m => lastAddedMessage = m)
+            .ReturnsAsync((Mensaje m) => m);
+        _mockMessageRepository.Setup(x => x.GetByIdAsync(It.IsAny<long>()))
+            .ReturnsAsync((long id) => lastAddedMessage);
 
         var client = new HttpClient(_mockHttpMessageHandler.Object)
         {

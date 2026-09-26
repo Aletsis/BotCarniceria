@@ -40,6 +40,12 @@ public class MainLayoutTests : IAsyncLifetime
 
         Context.JSInterop.Mode = JSRuntimeMode.Loose;
 
+        // Mediator setup
+        var mockMediator = new Mock<MediatR.IMediator>();
+        mockMediator.Setup(x => x.Send(It.IsAny<BotCarniceria.Core.Application.CQRS.Queries.GetAllConfiguracionesQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<BotCarniceria.Core.Application.DTOs.ConfiguracionDto>());
+        Context.Services.AddSingleton(mockMediator.Object);
+
         // NOTE: MainLayout already includes MudProviders, so we DON'T render them here.
 
         return Task.CompletedTask;
