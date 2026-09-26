@@ -17,11 +17,11 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public ClienteDto Cliente { get; set; }
+    [Parameter] public ClienteDto Cliente { get; set; } = null!;
 
-    private ClienteDto _tempCliente;
+    private ClienteDto _tempCliente = null!;
     private bool _saving;
 
     protected override void OnInitialized()

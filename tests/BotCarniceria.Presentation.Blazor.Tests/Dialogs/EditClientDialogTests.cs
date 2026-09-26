@@ -61,7 +61,7 @@ public class EditClientDialogTests : IAsyncLifetime
         var dialogService = Context.Services.GetRequiredService<IDialogService>();
         var parameters = new DialogParameters { ["Cliente"] = cliente };
         
-        await _dialogProvider.InvokeAsync(() => dialogService.Show<EditClientDialog>("Title", parameters));
+        await _dialogProvider.InvokeAsync(() => dialogService.ShowAsync<EditClientDialog>("Title", parameters));
 
         // Assert
         _dialogProvider.WaitForAssertion(() => _dialogProvider.Markup.Should().Contain("Existing Name"));

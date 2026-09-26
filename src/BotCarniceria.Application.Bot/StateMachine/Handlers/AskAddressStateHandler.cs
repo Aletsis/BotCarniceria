@@ -84,7 +84,7 @@ public class AskAddressStateHandler : IConversationStateHandler
                     $"Perfecto! 📝\n\nAhora puedes escribir tu pedido.\nIncluye cantidades y especificaciones.\n\nEjemplo:\n2 kg de carne molida\n1 kg de bistec\n500g de chorizo");
             }
         }
-        catch (Exception ex)
+        catch
         {
             // Rollback transaction on error
             await _unitOfWork.RollbackTransactionAsync();

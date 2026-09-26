@@ -29,14 +29,14 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public UsuarioDto? User { get; set; }
 
-    private string username;
-    private string nombre;
-    private string telefono;
-    private string password;
+    private string username = string.Empty;
+    private string nombre = string.Empty;
+    private string? telefono;
+    private string password = string.Empty;
     private RolUsuario rol = RolUsuario.Editor;
 
     protected override void OnInitialized()

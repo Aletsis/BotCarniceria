@@ -42,7 +42,7 @@ public class WebhookController : ControllerBase
             if (mode == "subscribe" && verifyToken == token)
             {
                 _logger.LogInformation("Webhook verified successfully");
-                return Content(challenge, "text/plain");
+                return Content(challenge.ToString(), "text/plain");
             }
         }
 

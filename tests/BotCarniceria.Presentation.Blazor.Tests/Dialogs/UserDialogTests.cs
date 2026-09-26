@@ -60,7 +60,7 @@ public class UserDialogTests : IAsyncLifetime
         var dialogService = Context.Services.GetRequiredService<IDialogService>();
         var parameters = new DialogParameters { ["User"] = usuario };
         
-        await _dialogProvider.InvokeAsync(() => dialogService.Show<UserDialog>("Title", parameters));
+        await _dialogProvider.InvokeAsync(() => dialogService.ShowAsync<UserDialog>("Title", parameters));
 
         // Assert
         _dialogProvider.WaitForAssertion(() => _dialogProvider.Markup.Should().Contain("admin1"));

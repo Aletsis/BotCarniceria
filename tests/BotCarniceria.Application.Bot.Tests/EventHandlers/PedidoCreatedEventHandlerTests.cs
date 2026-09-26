@@ -39,9 +39,9 @@ public class PedidoCreatedEventHandlerTests
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Pedido creado")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Pedido creado")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 }

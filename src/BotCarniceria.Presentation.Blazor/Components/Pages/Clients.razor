@@ -281,7 +281,7 @@
         var dialog = await DialogService.ShowAsync<Dialogs.EditClientDialog>("Nuevo Cliente", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             await LoadData();
             
@@ -310,7 +310,7 @@
         var dialog = await DialogService.ShowAsync<Dialogs.EditClientDialog>("Editar Cliente", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             await LoadData();
             
@@ -336,7 +336,7 @@
         var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirmación", parameters, options);
         var res = await dialog.Result;
 
-        if (res.Canceled) return;
+        if (res is null || res.Canceled) return;
 
         try
         {

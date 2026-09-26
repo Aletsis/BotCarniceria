@@ -35,17 +35,17 @@
             }
         </MudTd>
         <MudTd DataLabel="Acciones">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditUser(context))" AriaLabel="Editar usuario" />
-            <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" OnClick="@(() => ChangePassword(context))" AriaLabel="Restablecer contraseña" />
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditUser(context))" aria-label="Editar usuario" />
+            <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" OnClick="@(() => ChangePassword(context))" aria-label="Restablecer contraseña" />
             <MudIconButton Icon="@(context.Activo ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)" 
                            Color="@(context.Activo ? Color.Error : Color.Success)" 
                            Size="Size.Small" 
                            OnClick="@(() => ToggleStatus(context))" 
-                           AriaLabel="@(context.Activo ? "Desactivar usuario" : "Activar usuario")" />
+                           aria-label="@(context.Activo ? "Desactivar usuario" : "Activar usuario")" />
             @if (context.IsLocked)
             {
                 <MudTooltip Text="Desbloquear usuario">
-                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Warning" OnClick="@(() => UnlockUser(context))" AriaLabel="Desbloquear usuario" />
+                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Warning" OnClick="@(() => UnlockUser(context))" aria-label="Desbloquear usuario" />
                 </MudTooltip>
             }
         </MudTd>
@@ -75,7 +75,7 @@
     {
         var dialog = await DialogService.ShowAsync<Dialogs.UserDialog>("Nuevo Usuario");
         var result = await dialog.Result;
-        if (!result.Canceled) await LoadUsers();
+        if (result is not null && !result.Canceled) await LoadUsers();
     }
 
     private async Task EditUser(UsuarioDto user)
@@ -83,7 +83,7 @@
         var parameters = new DialogParameters<Dialogs.UserDialog> { { x => x.User, user } };
         var dialog = await DialogService.ShowAsync<Dialogs.UserDialog>("Editar Usuario", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled) await LoadUsers();
+        if (result is not null && !result.Canceled) await LoadUsers();
     }
 
     private async Task ToggleStatus(UsuarioDto user)

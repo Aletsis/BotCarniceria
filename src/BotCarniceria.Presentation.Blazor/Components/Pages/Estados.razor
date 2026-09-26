@@ -58,7 +58,7 @@
     private string caption = "";
     private bool uploading = false;
     private string? lastMediaId;
-    MudForm form;
+    MudForm form = null!;
 
     private void UploadFiles(IBrowserFile file)
     {

@@ -7,7 +7,10 @@ public sealed class Folio : ValueObject
     private Folio(string value) => Value = value;
     
     // Required for EF Core
-    private Folio() { }
+    private Folio()
+    {
+        Value = string.Empty;
+    }
 
     private static readonly Random _random = new Random();
     private static readonly object _syncLock = new object();

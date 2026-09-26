@@ -1,4 +1,4 @@
-﻿@using BotCarniceria.Core.Application.CQRS.Queries
+@using BotCarniceria.Core.Application.CQRS.Queries
 @using BotCarniceria.Core.Application.DTOs
 @using MediatR
 @inherits LayoutComponentBase
@@ -13,14 +13,14 @@
 
 <MudLayout>
     <MudAppBar Elevation="1" Color="Color.Error">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" AriaLabel="Alternar menú lateral" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" aria-label="Alternar menú lateral" />
         <MudText Typo="Typo.h5" Class="ml-3">Bot Carnicería</MudText>
         <MudSpacer />
-        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness7 : Icons.Material.Filled.Brightness4)" Color="Color.Inherit" OnClick="@ToggleDarkMode" AriaLabel="@(_isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro")" />
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness7 : Icons.Material.Filled.Brightness4)" Color="Color.Inherit" OnClick="@ToggleDarkMode" aria-label="@(_isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro")" />
         <AuthorizeView>
             <Authorized>
                 <MudText Typo="Typo.body1" Class="mr-2">@context.User.Identity?.Name</MudText>
-                <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout" Href="account/logout" Title="Cerrar sesión" AriaLabel="Cerrar sesión">Salir</MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout" Href="account/logout" title="Cerrar sesión" aria-label="Cerrar sesión">Salir</MudButton>
             </Authorized>
         </AuthorizeView>
     </MudAppBar>

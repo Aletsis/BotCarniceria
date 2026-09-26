@@ -96,10 +96,10 @@
         }
 
         var parameters = new DialogParameters { ["Cliente"] = client };
-        var dialog = DialogService.Show<EditClientDialog>("Gestionar Cliente", parameters);
+        var dialog = await DialogService.ShowAsync<EditClientDialog>("Gestionar Cliente", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             await LoadSessions(); 
         }
@@ -110,10 +110,10 @@
         if (Enum.TryParse<BotCarniceria.Core.Domain.Enums.ConversationState>(conversacion.Estado, out var currentState))
         {
             var parameters = new DialogParameters { ["CurrentState"] = currentState };
-            var dialog = DialogService.Show<ChangeStateDialog>("Cambiar Estado Manualmente", parameters);
+            var dialog = await DialogService.ShowAsync<ChangeStateDialog>("Cambiar Estado Manualmente", parameters);
             var result = await dialog.Result;
 
-            if (!result.Canceled && result.Data is BotCarniceria.Core.Domain.Enums.ConversationState newState)
+            if (result is not null && !result.Canceled && result.Data is BotCarniceria.Core.Domain.Enums.ConversationState newState)
             {
                 var success = await Mediator.Send(new UpdateSessionStateCommand 
                 { 

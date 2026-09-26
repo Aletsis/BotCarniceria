@@ -56,7 +56,7 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
         if (!string.IsNullOrWhiteSpace(header))
         {
             var authValues = System.Net.Http.Headers.AuthenticationHeaderValue.Parse(header);
-            if ("Basic".Equals(authValues.Scheme, StringComparison.OrdinalIgnoreCase))
+            if ("Basic".Equals(authValues.Scheme, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(authValues.Parameter))
             {
                 var parameter = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(authValues.Parameter));
                 var parts = parameter.Split(':');

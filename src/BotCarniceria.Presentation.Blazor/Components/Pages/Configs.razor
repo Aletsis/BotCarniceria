@@ -73,7 +73,7 @@ else
                                 @if (context.Editable)
                                 {
                                     <MudTooltip Text="Editar configuración">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => EditConfig(context))" AriaLabel="Editar configuración" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => EditConfig(context))" aria-label="Editar configuración" />
                                     </MudTooltip>
                                 }
                                 else
@@ -137,7 +137,7 @@ else
                             @if (context.Editable)
                             {
                                 <MudTooltip Text="Editar configuración">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => EditConfig(context))" AriaLabel="Editar configuración" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => EditConfig(context))" aria-label="Editar configuración" />
                                 </MudTooltip>
                             }
                             else
@@ -220,11 +220,11 @@ else
         var dialog = await DialogService.ShowAsync<Dialogs.EditConfigDialog>("Editar Configuración", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             await LoadConfigs();
         }
     }
 
-    [Inject] IDialogService DialogService { get; set; }
+    [Inject] IDialogService DialogService { get; set; } = null!;
 }

@@ -59,7 +59,7 @@ public class EditConfigDialogTests : IAsyncLifetime
         var dialogService = Context.Services.GetRequiredService<IDialogService>();
         var parameters = new DialogParameters { ["Config"] = config };
         
-        await _dialogProvider.InvokeAsync(() => dialogService.Show<EditConfigDialog>("Title", parameters));
+        await _dialogProvider.InvokeAsync(() => dialogService.ShowAsync<EditConfigDialog>("Title", parameters));
 
         // Assert
         _dialogProvider.WaitForAssertion(() => _dialogProvider.Markup.Should().Contain("TestKey"));

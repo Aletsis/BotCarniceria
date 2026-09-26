@@ -137,7 +137,7 @@ public class ArchitectureTests
         if (baseEntityType == null)
         {
              // Fallback or explicit check if BaseEntity is named differently or in shared
-            Assert.True(false, "BaseEntity not found");
+            Assert.Fail("BaseEntity not found");
             return;
         }
 

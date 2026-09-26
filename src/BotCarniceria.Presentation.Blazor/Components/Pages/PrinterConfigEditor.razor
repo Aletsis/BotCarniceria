@@ -78,15 +78,15 @@
 </MudCard>
 
 @code {
-    [Parameter] public ConfiguracionDto Config { get; set; }
+    [Parameter] public ConfiguracionDto Config { get; set; } = null!;
     [Parameter] public EventCallback OnConfigSaved { get; set; }
 
     private PrinterSettings settings = new();
     private PrinterConfig newPrinter = new();
-    private MudForm form;
+    private MudForm form = null!;
     private bool success;
 
-    private PrinterConfig _editingPrinter = null;
+    private PrinterConfig? _editingPrinter = null;
 
     protected override void OnInitialized()
     {

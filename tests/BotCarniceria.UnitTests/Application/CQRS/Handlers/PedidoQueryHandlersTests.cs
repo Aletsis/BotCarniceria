@@ -446,7 +446,9 @@ public class PedidoQueryHandlersTests
 
         // Assert
         result.Should().HaveCount(1);
-        _mockPedidoRepository.Verify(x => x.FindAsync(It.IsAny<Specification<Pedido>>()), Times.Once);
+        var testPedido = Pedido.Create(1, "Status Order");
+        testPedido.CambiarEstado(expectedEnum);
+        _mockPedidoRepository.Verify(x => x.FindAsync(It.Is<Specification<Pedido>>(s => s.IsSatisfiedBy(testPedido))), Times.Once);
     }
 
     [Theory]
@@ -470,7 +472,9 @@ public class PedidoQueryHandlersTests
 
         // Assert
         result.Should().HaveCount(1);
-        _mockPedidoRepository.Verify(x => x.FindAsync(It.IsAny<Specification<Pedido>>()), Times.Once);
+        var testPedido = Pedido.Create(1, "Legacy Status Order");
+        testPedido.CambiarEstado(expectedEnum);
+        _mockPedidoRepository.Verify(x => x.FindAsync(It.Is<Specification<Pedido>>(s => s.IsSatisfiedBy(testPedido))), Times.Once);
     }
     
     [Fact]

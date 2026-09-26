@@ -47,7 +47,7 @@
         
         if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var returnUrl))
         {
-            _returnUrl = returnUrl;
+            _returnUrl = returnUrl.ToString() ?? "/";
         }
     }
 }

@@ -64,7 +64,7 @@ public class PedidoDetailDialogTests : IAsyncLifetime
         var dialogService = Context.Services.GetRequiredService<IDialogService>();
         var parameters = new DialogParameters { ["Pedido"] = pedido };
         
-        await _dialogProvider.InvokeAsync(() => dialogService.Show<PedidoDetailDialog>("Title", parameters));
+        await _dialogProvider.InvokeAsync(() => dialogService.ShowAsync<PedidoDetailDialog>("Title", parameters));
 
         // Assert
         _dialogProvider.WaitForAssertion(() => _dialogProvider.Markup.Should().Contain("FOL-12345"));

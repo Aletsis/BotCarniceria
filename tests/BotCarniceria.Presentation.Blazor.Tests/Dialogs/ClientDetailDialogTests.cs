@@ -69,7 +69,7 @@ public class ClientDetailDialogTests : IAsyncLifetime
         var dialogService = Context.Services.GetRequiredService<IDialogService>();
         var parameters = new DialogParameters { ["ClienteId"] = 1 };
         
-        await _dialogProvider.InvokeAsync(() => dialogService.Show<ClientDetailDialog>("Test Title", parameters));
+        await _dialogProvider.InvokeAsync(() => dialogService.ShowAsync<ClientDetailDialog>("Test Title", parameters));
 
         // Assert
         _dialogProvider.WaitForAssertion(() => _dialogProvider.Markup.Should().Contain("Test Client"));

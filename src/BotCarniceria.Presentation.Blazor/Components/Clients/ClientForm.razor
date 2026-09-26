@@ -47,7 +47,7 @@
     [Parameter] public EventCallback OnValidSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    private MudForm form;
+    private MudForm form = null!;
     private bool success;
 
     private async Task Submit()

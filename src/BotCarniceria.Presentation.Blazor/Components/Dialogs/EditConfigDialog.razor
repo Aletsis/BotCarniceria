@@ -43,11 +43,11 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public ConfiguracionDto Config { get; set; }
+    [Parameter] public ConfiguracionDto Config { get; set; } = null!;
 
-    private string newValue;
+    private string newValue = string.Empty;
     private TimeSpan? timeValue;
 
     protected override void OnInitialized()
