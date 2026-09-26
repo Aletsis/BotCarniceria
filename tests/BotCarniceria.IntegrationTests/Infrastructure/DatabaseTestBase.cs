@@ -46,6 +46,7 @@ public abstract class DatabaseTestBase : IDisposable
         DbContext.Conversaciones.RemoveRange(DbContext.Conversaciones);
         DbContext.Mensajes.RemoveRange(DbContext.Mensajes);
         DbContext.Configuraciones.RemoveRange(DbContext.Configuraciones);
+        DbContext.SolicitudesFactura.RemoveRange(DbContext.SolicitudesFactura);
         DbContext.SaveChanges();
     }
 
@@ -60,6 +61,7 @@ public abstract class DatabaseTestBase : IDisposable
         var messageRepo = new MessageRepository(DbContext);
         var configRepo = new ConfiguracionRepository(DbContext);
         var usuarioRepo = new UsuarioRepository(DbContext);
+        var solicitudFacturaRepo = new SolicitudFacturaRepository(DbContext);
 
         return new UnitOfWork(
             DbContext,
@@ -68,7 +70,8 @@ public abstract class DatabaseTestBase : IDisposable
             sessionRepo,
             messageRepo,
             configRepo,
-            usuarioRepo
+            usuarioRepo,
+            solicitudFacturaRepo
         );
     }
 

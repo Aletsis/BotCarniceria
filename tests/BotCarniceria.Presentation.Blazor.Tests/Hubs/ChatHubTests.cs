@@ -1,3 +1,4 @@
+using BotCarniceria.Core.Domain.Services;
 using BotCarniceria.Presentation.Blazor.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ public class ChatHubTests
     private readonly Mock<HubCallerContext> _mockContext;
     private readonly Mock<IGroupManager> _mockGroups;
     private readonly Mock<ILogger<ChatHub>> _mockLogger;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
     private readonly ChatHub _hub;
 
     public ChatHubTests()
@@ -22,12 +24,13 @@ public class ChatHubTests
         _mockContext = new Mock<HubCallerContext>();
         _mockGroups = new Mock<IGroupManager>();
         _mockLogger = new Mock<ILogger<ChatHub>>();
+        _mockDateTimeProvider = new Mock<IDateTimeProvider>();
 
         _mockClients.Setup(c => c.All).Returns(_mockClientProxy.Object);
         _mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(_mockClientProxy.Object);
         _mockClients.Setup(c => c.Groups(It.IsAny<IReadOnlyList<string>>())).Returns(_mockClientProxy.Object);
 
-        _hub = new ChatHub(_mockLogger.Object)
+        _hub = new ChatHub(_mockLogger.Object, _mockDateTimeProvider.Object)
         {
             Clients = _mockClients.Object,
             Context = _mockContext.Object,

@@ -1,3 +1,4 @@
+using BotCarniceria.Core.Domain.Services;
 using BotCarniceria.Presentation.Blazor.Hubs;
 using BotCarniceria.Presentation.Blazor.Services;
 using Microsoft.AspNetCore.SignalR;
@@ -11,6 +12,7 @@ public class SignalRNotificationServiceTests
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
     private readonly Mock<IHubClients> _mockClients;
     private readonly Mock<IClientProxy> _mockClientProxy;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
     private readonly SignalRNotificationService _service;
 
     public SignalRNotificationServiceTests()
@@ -18,12 +20,13 @@ public class SignalRNotificationServiceTests
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
         _mockClients = new Mock<IHubClients>();
         _mockClientProxy = new Mock<IClientProxy>();
+        _mockDateTimeProvider = new Mock<IDateTimeProvider>();
 
         _mockHubContext.Setup(x => x.Clients).Returns(_mockClients.Object);
         _mockClients.Setup(x => x.All).Returns(_mockClientProxy.Object);
         _mockClients.Setup(x => x.Groups(It.IsAny<IReadOnlyList<string>>())).Returns(_mockClientProxy.Object);
 
-        _service = new SignalRNotificationService(_mockHubContext.Object);
+        _service = new SignalRNotificationService(_mockHubContext.Object, _mockDateTimeProvider.Object);
     }
 
     [Fact]
