@@ -123,34 +123,40 @@ public class ClientsTests : IAsyncLifetime
     }
 
     [Fact]
-    public void ClientsPage_ShouldOpenCreateDialog()
+    public async Task ClientsPage_ShouldOpenCreateDialog()
     {
         // Arrange
         var clients = new List<ClienteDto>();
         _mockMediator.Setup(m => m.Send(It.IsAny<GetAllClientesQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(clients);
-        
-        var authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "admin") }, "Test")));
-        var cut = Context.Render<Clients>(p => p.AddCascadingValue(Task.FromResult(authState)));
 
         // Mock Dialog Service to verify call
         var dialogServiceMock = Mock.Get(Context.Services.GetService<IDialogService>()!);
-        // Setup ShowAsync to return a dummy result to avoid null reference if awaited
         var dialogReference = new Mock<IDialogReference>();
         dialogReference.Setup(x => x.Result).ReturnsAsync(DialogResult.Ok(true));
         dialogServiceMock.Setup(d => d.ShowAsync<EditClientDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()))
             .ReturnsAsync(dialogReference.Object);
 
+        var authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "admin") }, "Test")));
+        var cut = Context.Render<Clients>(p => p.AddCascadingValue(Task.FromResult(authState)));
+
+        // Wait for page to be rendered
+        cut.WaitForAssertion(() => cut.FindAll("button").Any(b => b.TextContent.Contains("Nuevo")));
+
         // Act
-        var newButton = cut.FindAll("button").First(b => b.TextContent.Contains("Nuevo"));
-        newButton.Click();
+        await cut.InvokeAsync(() =>
+        {
+            var newButton = cut.FindAll("button").First(b => b.TextContent.Contains("Nuevo"));
+            newButton.Click();
+        });
 
         // Assert
-        dialogServiceMock.Verify(d => d.ShowAsync<EditClientDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once);
+        cut.WaitForAssertion(() =>
+            dialogServiceMock.Verify(d => d.ShowAsync<EditClientDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once));
     }
 
     [Fact]
-    public void ClientsPage_ShouldToggleStatus()
+    public async Task ClientsPage_ShouldToggleStatus()
     {
         // Arrange
         var client = new ClienteDto { ClienteID = 1, Nombre = "Juan Perez", Activo = true };
@@ -163,9 +169,6 @@ public class ClientsTests : IAsyncLifetime
         _mockMediator.Setup(m => m.Send(It.IsAny<ToggleClienteActivoCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "admin") }, "Test")));
-        var cut = Context.Render<Clients>(p => p.AddCascadingValue(Task.FromResult(authState)));
-
         // Mock Dialog Service for Confirmation
         var dialogServiceMock = Mock.Get(Context.Services.GetService<IDialogService>()!);
         var dialogReference = new Mock<IDialogReference>();
@@ -173,19 +176,27 @@ public class ClientsTests : IAsyncLifetime
         dialogServiceMock.Setup(d => d.ShowAsync<BotCarniceria.Presentation.Blazor.Components.Shared.ConfirmDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()))
             .ReturnsAsync(dialogReference.Object);
 
+        var authState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "admin") }, "Test")));
+        var cut = Context.Render<Clients>(p => p.AddCascadingValue(Task.FromResult(authState)));
+
         // Wait for client to be rendered
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Juan Perez"));
 
         // Act
         // Find the toggle button (it's an IconButton with aria-label)
-        var toggleButton = cut.Find("button[aria-label='Desactivar cliente']");
-        toggleButton.Click();
+        await cut.InvokeAsync(() =>
+        {
+            var toggleButton = cut.Find("button[aria-label='Desactivar cliente']");
+            toggleButton.Click();
+        });
 
         // Assert
         // Verify dialog was shown
-        dialogServiceMock.Verify(d => d.ShowAsync<BotCarniceria.Presentation.Blazor.Components.Shared.ConfirmDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once);
+        cut.WaitForAssertion(() =>
+            dialogServiceMock.Verify(d => d.ShowAsync<BotCarniceria.Presentation.Blazor.Components.Shared.ConfirmDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once));
         
         // Verify Mediator command was sent
-        _mockMediator.Verify(m => m.Send(It.Is<ToggleClienteActivoCommand>(c => c.ClienteID == 1 && c.Activo == false), It.IsAny<CancellationToken>()), Times.Once);
+        cut.WaitForAssertion(() =>
+            _mockMediator.Verify(m => m.Send(It.Is<ToggleClienteActivoCommand>(c => c.ClienteID == 1 && c.Activo == false), It.IsAny<CancellationToken>()), Times.Once));
     }
 }
