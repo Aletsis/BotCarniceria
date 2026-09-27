@@ -20,6 +20,7 @@ public class PrintingServiceTests
 
     public PrintingServiceTests()
     {
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         _mockLogger = new Mock<ILogger<PrintingService>>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockDateTimeProvider = new Mock<IDateTimeProvider>();

@@ -8,6 +8,11 @@ public class TicketBuilder
     private readonly BinaryWriter _writer;
     private readonly Encoding _encoding;
 
+    static TicketBuilder()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
     public TicketBuilder()
     {
         _stream = new MemoryStream();
