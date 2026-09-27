@@ -235,4 +235,79 @@ public class UsuarioSpecificationsTests
     }
 
     #endregion
+
+    #region SupervisorsWithPhoneSpecification Tests
+
+    [Fact]
+    public void SupervisorsWithPhoneSpecification_WhenActiveSupervisorWithPhone_ReturnsTrue()
+    {
+        // Arrange
+        var user = CreateUser("super1", RolUsuario.Supervisor, activo: true, telefono: "5551234567");
+        var spec = new SupervisorsWithPhoneSpecification();
+
+        // Act & Assert
+        spec.IsSatisfiedBy(user).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void SupervisorsWithPhoneSpecification_WhenPhoneNullOrEmpty_ReturnsFalse(string? phone)
+    {
+        // Arrange
+        var user = CreateUser("super_nophone", RolUsuario.Supervisor, activo: true, telefono: phone);
+        var spec = new SupervisorsWithPhoneSpecification();
+
+        // Act & Assert
+        spec.IsSatisfiedBy(user).Should().BeFalse();
+    }
+
+    [Fact]
+    public void SupervisorsWithPhoneSpecification_WhenInactive_ReturnsFalse()
+    {
+        // Arrange
+        var user = CreateUser("inactive_super", RolUsuario.Supervisor, activo: false, telefono: "5551234567");
+        var spec = new SupervisorsWithPhoneSpecification();
+
+        // Act & Assert
+        spec.IsSatisfiedBy(user).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(RolUsuario.Admin)]
+    [InlineData(RolUsuario.Editor)]
+    [InlineData(RolUsuario.Viewer)]
+    public void SupervisorsWithPhoneSpecification_WhenNotSupervisor_ReturnsFalse(RolUsuario rol)
+    {
+        // Arrange
+        var user = CreateUser("other_user", rol, activo: true, telefono: "5551234567");
+        var spec = new SupervisorsWithPhoneSpecification();
+
+        // Act & Assert
+        spec.IsSatisfiedBy(user).Should().BeFalse();
+    }
+
+    [Fact]
+    public void SupervisorsWithPhoneSpecification_WorksWithLinq()
+    {
+        // Arrange
+        var users = new List<Usuario>
+        {
+            CreateUser("super1", RolUsuario.Supervisor, activo: true, telefono: "5551111111"),
+            CreateUser("admin1", RolUsuario.Admin, activo: true, telefono: "5552222222"),
+            CreateUser("super_inactive", RolUsuario.Supervisor, activo: false, telefono: "5553333333"),
+            CreateUser("super_nophone", RolUsuario.Supervisor, activo: true, telefono: null),
+            CreateUser("editor1", RolUsuario.Editor, activo: true, telefono: "5554444444")
+        };
+        var spec = new SupervisorsWithPhoneSpecification();
+
+        // Act
+        var result = users.AsQueryable().Where(spec.ToExpression()).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result.First().Username.Should().Be("super1");
+    }
+
+    #endregion
 }
