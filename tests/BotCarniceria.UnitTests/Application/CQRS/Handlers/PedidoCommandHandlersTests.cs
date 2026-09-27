@@ -1,6 +1,8 @@
 using BotCarniceria.Core.Application.CQRS.Commands;
 using BotCarniceria.Core.Application.CQRS.Handlers;
 using BotCarniceria.Core.Application.Interfaces;
+using BotCarniceria.Core.Application.Interfaces.BackgroundJobs;
+using BotCarniceria.Core.Application.Interfaces.BackgroundJobs.Jobs;
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
 using FluentAssertions;
@@ -14,14 +16,19 @@ public class PedidoCommandHandlersTests
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IOrderRepository> _mockPedidoRepository;
     private readonly Mock<IWhatsAppService> _mockWhatsAppService;
+    private readonly Mock<IBackgroundJobService> _mockBackgroundJobService;
+    private readonly Mock<IConfiguracionRepository> _mockSettings;
 
     public PedidoCommandHandlersTests()
     {
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockPedidoRepository = new Mock<IOrderRepository>();
         _mockWhatsAppService = new Mock<IWhatsAppService>();
+        _mockBackgroundJobService = new Mock<IBackgroundJobService>();
+        _mockSettings = new Mock<IConfiguracionRepository>();
 
         _mockUnitOfWork.Setup(x => x.Orders).Returns(_mockPedidoRepository.Object);
+        _mockUnitOfWork.Setup(x => x.Settings).Returns(_mockSettings.Object);
     }
 
     #region CreatePedidoCommandHandler Tests
@@ -252,30 +259,24 @@ public class PedidoCommandHandlersTests
 
     #endregion
 
-/*
     #region ImprimirPedidoCommandHandler Tests
 
     [Fact]
-    public async Task ImprimirPedidoCommandHandler_ShouldMarkPedidoAsImpreso()
+    public async Task ImprimirPedidoCommandHandler_WhenPedidoExists_ShouldMarkAsImpresoAndEnqueuePrintJob()
     {
         // Arrange
-        var pedido = Pedido.Create(1, "Test contenido");
-        var cliente = Cliente.Create("5551234567", "Juan Pérez", "Calle 123");
-        
-        var clienteProperty = typeof(Pedido).GetProperty("Cliente");
-        clienteProperty?.SetValue(pedido, cliente);
-
-        _mockPedidoRepository.Setup(x => x.GetByIdAsync(It.IsAny<long>()))
+        var pedido = Pedido.Create(1, "2 kg arrachera");
+        _mockPedidoRepository.Setup(x => x.GetByIdAsync(1L))
             .ReturnsAsync(pedido);
+        _mockSettings.Setup(x => x.GetValorAsync("Printer_Name"))
+            .ReturnsAsync("Termica_Cocina");
+        _mockBackgroundJobService.Setup(x => x.EnqueueAsync(It.IsAny<EnqueuePrintJob>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("job-101");
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
-        var command = new ImprimirPedidoCommand
-        {
-            PedidoID = 1
-        };
-
-        var handler = new ImprimirPedidoCommandHandler(
-            _mockUnitOfWork.Object,
-            _mockPrintingService.Object);
+        var command = new ImprimirPedidoCommand { PedidoID = 1L };
+        var handler = new ImprimirPedidoCommandHandler(_mockUnitOfWork.Object, _mockBackgroundJobService.Object);
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -284,123 +285,53 @@ public class PedidoCommandHandlersTests
         result.Should().BeTrue();
         pedido.EstadoImpresion.Should().BeTrue();
         pedido.FechaImpresion.Should().NotBeNull();
-        _mockPedidoRepository.Verify(x => x.UpdateAsync(It.IsAny<Pedido>()), Times.Once);
+
+        _mockPedidoRepository.Verify(x => x.UpdateAsync(pedido), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockBackgroundJobService.Verify(x => x.EnqueueAsync(
+            It.Is<EnqueuePrintJob>(j =>
+                j.PedidoId == pedido.PedidoID &&
+                j.PrinterName == "Termica_Cocina" &&
+                !j.PrintDuplicate),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task ImprimirPedidoCommandHandler_WithPrintingService_ShouldCallPrintTicket()
+    public async Task ImprimirPedidoCommandHandler_WhenPrinterSettingNull_ShouldUseDefaultPrinterName()
     {
         // Arrange
-        var pedido = Pedido.Create(1, "Test contenido");
-        var cliente = Cliente.Create("5551234567", "Juan Pérez", "Calle 123");
-        
-        var clienteProperty = typeof(Pedido).GetProperty("Cliente");
-        clienteProperty?.SetValue(pedido, cliente);
-
-        _mockPedidoRepository.Setup(x => x.GetByIdAsync(It.IsAny<long>()))
+        var pedido = Pedido.Create(1, "1 kg bistec");
+        _mockPedidoRepository.Setup(x => x.GetByIdAsync(2L))
             .ReturnsAsync(pedido);
+        _mockSettings.Setup(x => x.GetValorAsync("Printer_Name"))
+            .ReturnsAsync((string?)null);
+        _mockBackgroundJobService.Setup(x => x.EnqueueAsync(It.IsAny<EnqueuePrintJob>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("job-102");
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
-        var command = new ImprimirPedidoCommand
-        {
-            PedidoID = 1
-        };
-
-        var handler = new ImprimirPedidoCommandHandler(
-            _mockUnitOfWork.Object,
-            _mockPrintingService.Object);
+        var command = new ImprimirPedidoCommand { PedidoID = 2L };
+        var handler = new ImprimirPedidoCommandHandler(_mockUnitOfWork.Object, _mockBackgroundJobService.Object);
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.Should().BeTrue();
-        _mockPrintingService.Verify(
-            x => x.PrintTicketAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ImprimirPedidoCommandHandler_WithoutPrintingService_ShouldStillMarkAsImpreso()
-    {
-        // Arrange
-        var pedido = Pedido.Create(1, "Test contenido");
-        _mockPedidoRepository.Setup(x => x.GetByIdAsync(It.IsAny<long>()))
-            .ReturnsAsync(pedido);
-
-        var command = new ImprimirPedidoCommand
-        {
-            PedidoID = 1
-        };
-
-        var handler = new ImprimirPedidoCommandHandler(_mockUnitOfWork.Object, null);
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        pedido.EstadoImpresion.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ImprimirPedidoCommandHandler_WhenPrintingFails_ShouldStillReturnTrue()
-    {
-        // Arrange
-        var pedido = Pedido.Create(1, "Test contenido");
-        var cliente = Cliente.Create("5551234567", "Juan Pérez", "Calle 123");
-        
-        var clienteProperty = typeof(Pedido).GetProperty("Cliente");
-        clienteProperty?.SetValue(pedido, cliente);
-
-        _mockPedidoRepository.Setup(x => x.GetByIdAsync(It.IsAny<long>()))
-            .ReturnsAsync(pedido);
-
-        _mockPrintingService.Setup(x => x.PrintTicketAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()))
-            .ThrowsAsync(new Exception("Printer error"));
-
-        var command = new ImprimirPedidoCommand
-        {
-            PedidoID = 1
-        };
-
-        var handler = new ImprimirPedidoCommandHandler(
-            _mockUnitOfWork.Object,
-            _mockPrintingService.Object);
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        pedido.EstadoImpresion.Should().BeTrue();
+        _mockBackgroundJobService.Verify(x => x.EnqueueAsync(
+            It.Is<EnqueuePrintJob>(j => j.PrinterName == "default"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task ImprimirPedidoCommandHandler_WhenPedidoNotFound_ShouldReturnFalse()
     {
         // Arrange
-        _mockPedidoRepository.Setup(x => x.GetByIdAsync(It.IsAny<long>()))
+        _mockPedidoRepository.Setup(x => x.GetByIdAsync(999L))
             .ReturnsAsync((Pedido?)null);
 
-        var command = new ImprimirPedidoCommand
-        {
-            PedidoID = 999
-        };
-
-        var handler = new ImprimirPedidoCommandHandler(_mockUnitOfWork.Object);
+        var command = new ImprimirPedidoCommand { PedidoID = 999L };
+        var handler = new ImprimirPedidoCommandHandler(_mockUnitOfWork.Object, _mockBackgroundJobService.Object);
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -408,8 +339,35 @@ public class PedidoCommandHandlersTests
         // Assert
         result.Should().BeFalse();
         _mockPedidoRepository.Verify(x => x.UpdateAsync(It.IsAny<Pedido>()), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockBackgroundJobService.Verify(x => x.EnqueueAsync(It.IsAny<EnqueuePrintJob>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ImprimirPedidoCommandHandler_WhenEnqueueThrows_ShouldReturnFalse()
+    {
+        // Arrange
+        var pedido = Pedido.Create(1, "3 kg costilla");
+        _mockPedidoRepository.Setup(x => x.GetByIdAsync(3L))
+            .ReturnsAsync(pedido);
+        _mockSettings.Setup(x => x.GetValorAsync("Printer_Name"))
+            .ReturnsAsync("default");
+        _mockBackgroundJobService.Setup(x => x.EnqueueAsync(It.IsAny<EnqueuePrintJob>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Hangfire unavailable"));
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var command = new ImprimirPedidoCommand { PedidoID = 3L };
+        var handler = new ImprimirPedidoCommandHandler(_mockUnitOfWork.Object, _mockBackgroundJobService.Object);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().BeFalse();
+        pedido.EstadoImpresion.Should().BeTrue(); // Still marked as printed in DB
+        _mockPedidoRepository.Verify(x => x.UpdateAsync(pedido), Times.Once);
     }
 
     #endregion
-*/
 }

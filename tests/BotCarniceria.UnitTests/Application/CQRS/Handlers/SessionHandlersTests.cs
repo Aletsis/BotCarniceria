@@ -512,4 +512,80 @@ public class SessionHandlersTests
     }
 
     #endregion
+
+    #region GetChatMessagesQuery Tests
+
+    [Fact]
+    public async Task GetChatMessagesQueryHandler_WhenMessagesExist_ShouldReturnMappedDtos()
+    {
+        // Arrange
+        var phone = "5551234567";
+        var incoming = Mensaje.CrearEntrante(phone, "Hola, buenas tardes", TipoContenidoMensaje.Texto, "wa-123", "{\"button\":\"none\"}");
+        typeof(Mensaje).GetProperty(nameof(Mensaje.MensajeID))?.SetValue(incoming, 10L);
+
+        var outgoing = Mensaje.CrearSaliente(phone, "¡Buenas tardes! ¿En qué podemos ayudarle?", TipoContenidoMensaje.Texto);
+        typeof(Mensaje).GetProperty(nameof(Mensaje.MensajeID))?.SetValue(outgoing, 11L);
+
+        var messages = new List<Mensaje> { incoming, outgoing };
+
+        _mockMessageRepository.Setup(x => x.GetByPhoneAsync(phone, 20, 5))
+            .ReturnsAsync(messages);
+
+        var query = new GetChatMessagesQuery
+        {
+            PhoneNumber = phone,
+            Take = 20,
+            Skip = 5
+        };
+        var handler = new GetChatMessagesQueryHandler(_mockUnitOfWork.Object);
+
+        // Act
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(2);
+
+        var dto1 = result[0];
+        dto1.MensajeID.Should().Be(10L);
+        dto1.NumeroTelefono.Should().Be(phone);
+        dto1.Contenido.Should().Be("Hola, buenas tardes");
+        dto1.EsEntrante.Should().BeTrue();
+        dto1.Leido.Should().BeFalse();
+        dto1.Tipo.Should().Be("texto");
+        dto1.Metadata.Should().Be("{\"button\":\"none\"}");
+
+        var dto2 = result[1];
+        dto2.MensajeID.Should().Be(11L);
+        dto2.NumeroTelefono.Should().Be(phone);
+        dto2.Contenido.Should().Be("¡Buenas tardes! ¿En qué podemos ayudarle?");
+        dto2.EsEntrante.Should().BeFalse();
+        dto2.Leido.Should().BeTrue();
+        dto2.Tipo.Should().Be("texto");
+
+        _mockMessageRepository.Verify(x => x.GetByPhoneAsync(phone, 20, 5), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetChatMessagesQueryHandler_WhenNoMessages_ShouldReturnEmptyList()
+    {
+        // Arrange
+        var phone = "5559999999";
+        _mockMessageRepository.Setup(x => x.GetByPhoneAsync(phone, 50, 0))
+            .ReturnsAsync(new List<Mensaje>());
+
+        var query = new GetChatMessagesQuery
+        {
+            PhoneNumber = phone
+        };
+        var handler = new GetChatMessagesQueryHandler(_mockUnitOfWork.Object);
+
+        // Act
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+        _mockMessageRepository.Verify(x => x.GetByPhoneAsync(phone, 50, 0), Times.Once);
+    }
+
+    #endregion
 }
