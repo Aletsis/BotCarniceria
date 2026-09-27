@@ -164,7 +164,7 @@ public class OrdersTests : IAsyncLifetime
     }
 
     [Fact]
-    public void OrdersPage_ShouldViewDetails()
+    public async Task OrdersPage_ShouldViewDetails()
     {
         // Arrange
         var order = new PedidoDto { PedidoID = 1, Folio = "P-001", ClienteNombre = "Cliente 1", Fecha = DateTime.UtcNow, Estado = "EnEspera" };
@@ -181,6 +181,7 @@ public class OrdersTests : IAsyncLifetime
         var dialogServiceMock = Mock.Get(Context.Services.GetService<IDialogService>()!);
         var dialogReference = new Mock<IDialogReference>();
         dialogReference.Setup(x => x.Result).ReturnsAsync(DialogResult.Ok(true));
+        dialogServiceMock.SetReturnsDefault<Task<IDialogReference>>(Task.FromResult(dialogReference.Object));
         dialogServiceMock.Setup(d => d.ShowAsync<PedidoDetailDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()))
             .ReturnsAsync(dialogReference.Object);
 
@@ -189,10 +190,13 @@ public class OrdersTests : IAsyncLifetime
 
         // Act
         var detailsButton = cut.Find("button[aria-label='Ver detalles del pedido']");
-        detailsButton.Click();
+        await cut.InvokeAsync(() => detailsButton.Click());
 
         // Assert
-        dialogServiceMock.Verify(d => d.ShowAsync<PedidoDetailDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once);
+        cut.WaitForAssertion(() =>
+        {
+            dialogServiceMock.Verify(d => d.ShowAsync<PedidoDetailDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()), Times.Once);
+        });
     }
     
     [Fact]

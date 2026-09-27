@@ -24,6 +24,7 @@ public class FacturasTests : IAsyncLifetime
     private readonly Mock<ISnackbar> _mockSnackbar;
     private readonly Mock<IDialogService> _mockDialogService;
     private readonly Mock<AuthenticationStateProvider> _mockAuthStateProvider;
+    private IRenderedComponent<MudPopoverProvider> _popoverProvider = default!;
 
     public FacturasTests()
     {
@@ -53,7 +54,7 @@ public class FacturasTests : IAsyncLifetime
         Context.Services.AddSingleton(_mockAuthStateProvider.Object);
         Context.JSInterop.Mode = JSRuntimeMode.Loose;
 
-        Context.Render<MudPopoverProvider>();
+        _popoverProvider = Context.Render<MudPopoverProvider>();
         return Task.CompletedTask;
     }
 
@@ -210,5 +211,96 @@ public class FacturasTests : IAsyncLifetime
 
         // Assert
         _mockSnackbar.Verify(s => s.Add("Error al cargar solicitudes: Database timeout", Severity.Error, It.IsAny<Action<SnackbarOptions>>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Facturas_WhenFilterByFecha_ShouldFilterList()
+    {
+        // Arrange
+        var authState = CreateAuthState("admin");
+        _mockAuthStateProvider.Setup(a => a.GetAuthenticationStateAsync()).ReturnsAsync(authState);
+        var samples = CreateSampleSolicitudes();
+        _mockMediator.Setup(m => m.Send(It.IsAny<GetAllSolicitudesFacturaQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(samples);
+
+        var cut = Context.Render<Facturas>(p => p.AddCascadingValue(Task.FromResult(authState)));
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Juan Perez"));
+
+        // Act - Filter by date of solicitud 102 (yesterday)
+        var datePicker = cut.FindComponent<MudDatePicker>();
+        var targetDate = BotCarniceria.Shared.Helpers.TimeZoneHelper.ToLocalTime(samples[1].FechaSolicitud).Date;
+        await cut.InvokeAsync(() => datePicker.Instance.DateChanged.InvokeAsync(targetDate));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.Should().Contain("Maria Lopez");
+            cut.Markup.Should().NotContain("Juan Perez");
+            cut.Markup.Should().Contain("Total de solicitudes: 1");
+        });
+    }
+
+    [Fact]
+    public async Task Facturas_VerDetalles_ShouldShowMessageBox()
+    {
+        // Arrange
+        var authState = CreateAuthState("admin");
+        _mockAuthStateProvider.Setup(a => a.GetAuthenticationStateAsync()).ReturnsAsync(authState);
+        _mockMediator.Setup(m => m.Send(It.IsAny<GetAllSolicitudesFacturaQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateSampleSolicitudes());
+
+        var cut = Context.Render<Facturas>(p => p.AddCascadingValue(Task.FromResult(authState)));
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Juan Perez"));
+
+        // Act - Open menu and click Ver Detalles
+        var menuBtn = cut.Find("td[data-label='Acciones'] button");
+        menuBtn.Click();
+
+        var verDetallesItem = _popoverProvider.FindComponents<MudMenuItem>().First(m => m.Markup.Contains("Ver Detalles"));
+        await cut.InvokeAsync(() => verDetallesItem.Instance.OnClick.InvokeAsync());
+
+        // Assert
+        _mockDialogService.Verify(d => d.ShowMessageBox(
+            It.Is<string>(t => t.Contains("Detalles de Solicitud #101")),
+            It.IsAny<MarkupString>(),
+            "Cerrar",
+            null,
+            null,
+            It.IsAny<DialogOptions>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Facturas_CambiarEstado_WhenConfirmed_ShouldUpdateStatusAndSendMediatorCommand()
+    {
+        // Arrange
+        var authState = CreateAuthState("admin");
+        _mockAuthStateProvider.Setup(a => a.GetAuthenticationStateAsync()).ReturnsAsync(authState);
+        _mockMediator.Setup(m => m.Send(It.IsAny<GetAllSolicitudesFacturaQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateSampleSolicitudes());
+        _mockMediator.Setup(m => m.Send(It.IsAny<UpdateSolicitudFacturaEstadoCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _mockDialogService.Setup(d => d.ShowMessageBox(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            "Sí",
+            null,
+            "Cancelar",
+            It.IsAny<DialogOptions>()))
+            .ReturnsAsync(true);
+
+        var cut = Context.Render<Facturas>(p => p.AddCascadingValue(Task.FromResult(authState)));
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Juan Perez"));
+
+        // Act - Open menu and click "Marcar En Proceso" on item 101 (which is "Pendiente")
+        var menuBtn = cut.Find("td[data-label='Acciones'] button");
+        menuBtn.Click();
+
+        var cambiarEstadoItem = _popoverProvider.FindComponents<MudMenuItem>().First(m => m.Markup.Contains("Marcar En Proceso"));
+        await cut.InvokeAsync(() => cambiarEstadoItem.Instance.OnClick.InvokeAsync());
+
+        // Assert
+        _mockMediator.Verify(m => m.Send(It.Is<UpdateSolicitudFacturaEstadoCommand>(c => c.SolicitudFacturaID == 101 && c.NuevoEstado == "EnProceso"), It.IsAny<CancellationToken>()), Times.Once);
+        _mockSnackbar.Verify(s => s.Add(It.Is<string>(msg => msg.Contains("actualizado a: En Proceso")), Severity.Success, It.IsAny<Action<SnackbarOptions>>(), It.IsAny<string>()), Times.Once);
     }
 }
