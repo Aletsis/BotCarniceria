@@ -1,6 +1,7 @@
 using BotCarniceria.Application.Bot.StateMachine.Handlers;
 using BotCarniceria.Core.Application.Interfaces;
 using BotCarniceria.Core.Application.Specifications;
+using BotCarniceria.Core.Domain.Constants;
 using BotCarniceria.Core.Domain.Entities;
 using BotCarniceria.Core.Domain.Enums;
 using BotCarniceria.Core.Domain.Services;
@@ -112,6 +113,81 @@ public class MenuStateHandlerTests
         session.Estado.Should().Be(ConversationState.TAKING_ORDER);
     }
 
+    [Fact]
+    public async Task HandleAsync_HacerPedido_WhenAfterWarningTime_DefaultSetting_ShouldPromptLateOrderConfirmation()
+    {
+        // Arrange
+        var phoneNumber = "5551234567";
+        var session = Conversacion.Create(phoneNumber);
+
+        _mockConfigRepository.Setup(x => x.GetValorAsync(ConfigurationKeys.Orders.LateOrderWarningStartHour))
+            .ReturnsAsync((string?)null); // Default 16:00
+        _mockDateTimeProvider.Setup(x => x.LocalTimeOfDay)
+            .Returns(new TimeSpan(16, 30, 0)); // 4:30 PM
+
+        // Act
+        await _handler.HandleAsync(phoneNumber, "menu_hacer_pedido", TipoContenidoMensaje.Texto, session);
+
+        // Assert
+        _mockWhatsAppService.Verify(x => x.SendInteractiveButtonsAsync(
+            phoneNumber,
+            It.Is<string>(msg => msg.Contains("Aviso de Horario") && msg.Contains("entregarlo al día siguiente")),
+            It.Is<List<(string id, string title)>>(buttons =>
+                buttons.Any(b => b.id == "late_order_continue") &&
+                buttons.Any(b => b.id == "late_order_cancel")),
+            It.IsAny<string?>(),
+            It.IsAny<string?>()),
+            Times.Once);
+
+        session.Estado.Should().Be(ConversationState.CONFIRM_LATE_ORDER);
+    }
+
+    [Fact]
+    public async Task HandleAsync_HacerPedido_WhenAfterWarningTime_CustomHHmmSetting_ShouldPromptLateOrderConfirmation()
+    {
+        // Arrange
+        var phoneNumber = "5551234567";
+        var session = Conversacion.Create(phoneNumber);
+
+        _mockConfigRepository.Setup(x => x.GetValorAsync(ConfigurationKeys.Orders.LateOrderWarningStartHour))
+            .ReturnsAsync("17:45");
+        _mockDateTimeProvider.Setup(x => x.LocalTimeOfDay)
+            .Returns(new TimeSpan(18, 0, 0)); // 6:00 PM >= 5:45 PM
+
+        // Act
+        await _handler.HandleAsync(phoneNumber, "menu_hacer_pedido", TipoContenidoMensaje.Texto, session);
+
+        // Assert
+        _mockWhatsAppService.Verify(x => x.SendInteractiveButtonsAsync(
+            phoneNumber,
+            It.Is<string>(msg => msg.Contains("Aviso de Horario")),
+            It.IsAny<List<(string id, string title)>>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>()),
+            Times.Once);
+
+        session.Estado.Should().Be(ConversationState.CONFIRM_LATE_ORDER);
+    }
+
+    [Fact]
+    public async Task HandleAsync_HacerPedido_WhenAfterWarningTime_SingleHourSetting_ShouldPromptLateOrderConfirmation()
+    {
+        // Arrange
+        var phoneNumber = "5551234567";
+        var session = Conversacion.Create(phoneNumber);
+
+        _mockConfigRepository.Setup(x => x.GetValorAsync(ConfigurationKeys.Orders.LateOrderWarningStartHour))
+            .ReturnsAsync("15");
+        _mockDateTimeProvider.Setup(x => x.LocalTimeOfDay)
+            .Returns(new TimeSpan(15, 1, 0));
+
+        // Act
+        await _handler.HandleAsync(phoneNumber, "menu_hacer_pedido", TipoContenidoMensaje.Texto, session);
+
+        // Assert
+        session.Estado.Should().Be(ConversationState.CONFIRM_LATE_ORDER);
+    }
+
     #endregion
 
     #region Estado Pedido Tests
@@ -191,6 +267,60 @@ public class MenuStateHandlerTests
             phoneNumber,
             It.Is<string>(msg => msg.Contains("últimos pedidos") && msg.Contains("Folio"))),
             Times.Once);
+    }
+
+    #endregion
+
+    #region Facturación Tests
+
+    [Fact]
+    public async Task HandleAsync_SolicitarFactura_WhenClienteIsNull_ShouldAskForNameAndSetAskName()
+    {
+        // Arrange
+        var phoneNumber = "5551234567";
+        var session = Conversacion.Create(phoneNumber);
+
+        _mockClienteRepository.Setup(x => x.GetByPhoneAsync(phoneNumber))
+            .ReturnsAsync((Cliente?)null);
+
+        // Act
+        await _handler.HandleAsync(phoneNumber, "menu_solicitar_factura", TipoContenidoMensaje.Texto, session);
+
+        // Assert
+        _mockWhatsAppService.Verify(x => x.SendTextMessageAsync(
+            phoneNumber,
+            It.Is<string>(msg => msg.Contains("datos básicos") && msg.Contains("nombre completo"))),
+            Times.Once);
+
+        session.Estado.Should().Be(ConversationState.ASK_NAME);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SolicitarFactura_WhenClienteExists_ShouldShowWarningButtonsAndSetBillingWarning()
+    {
+        // Arrange
+        var phoneNumber = "5551234567";
+        var session = Conversacion.Create(phoneNumber);
+        var cliente = Cliente.Create(phoneNumber, "Juan Pérez");
+
+        _mockClienteRepository.Setup(x => x.GetByPhoneAsync(phoneNumber))
+            .ReturnsAsync(cliente);
+
+        // Act
+        await _handler.HandleAsync(phoneNumber, "menu_solicitar_factura", TipoContenidoMensaje.Texto, session);
+
+        // Assert
+        _mockWhatsAppService.Verify(x => x.SendInteractiveButtonsAsync(
+            phoneNumber,
+            It.Is<string>(msg => msg.Contains("Aviso Importante") && msg.Contains("facturación es diaria")),
+            It.Is<List<(string id, string title)>>(buttons =>
+                buttons.Any(b => b.id == "billing_warning_continue") &&
+                buttons.Any(b => b.id == "billing_warning_cancel")),
+            It.IsAny<string?>(),
+            It.IsAny<string?>()),
+            Times.Once);
+
+        session.Estado.Should().Be(ConversationState.BILLING_WARNING);
     }
 
     #endregion
