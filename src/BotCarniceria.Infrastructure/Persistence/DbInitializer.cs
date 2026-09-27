@@ -9,8 +9,11 @@ public static class DbInitializer
 {
     public static async Task InitializeAsync(BotCarniceriaDbContext context)
     {
-        // Apply any pending migrations
-        await context.Database.MigrateAsync();
+        // Apply any pending migrations if relational database provider
+        if (context.Database.IsRelational())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         // Always check for new configurations
         var defaultConfigs = new List<Configuracion>
