@@ -1,5 +1,5 @@
 using Hangfire;
-using Hangfire.SqlServer;
+using Hangfire.PostgreSql;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using BotCarniceria.Core.Application.Interfaces.BackgroundJobs;
@@ -32,16 +32,13 @@ public static class BackgroundJobsDependencyInjection
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseSqlServerStorage(
-                hangfireOptions.ConnectionString,
-                new SqlServerStorageOptions
+            .UsePostgreSqlStorage(
+                c => c.UseNpgsqlConnection(hangfireOptions.ConnectionString),
+                new PostgreSqlStorageOptions
                 {
                     SchemaName = hangfireOptions.SchemaName,
-                    CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-                    SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-                    QueuePollInterval = TimeSpan.Zero,
-                    UseRecommendedIsolationLevel = true,
-                    DisableGlobalLocks = true
+                    QueuePollInterval = TimeSpan.FromSeconds(15),
+                    PrepareSchemaIfNecessary = true
                 }));
 
         services.AddHangfireServer(options =>

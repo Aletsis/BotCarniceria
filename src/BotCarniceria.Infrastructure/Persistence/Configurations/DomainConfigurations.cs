@@ -64,7 +64,7 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .HasMaxLength(250);
             
         builder.Property(c => c.FechaAlta)
-            .HasDefaultValueSql("GETDATE()"); // SQL Server specific
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.OwnsOne(c => c.DatosFacturacion, df =>
         {
@@ -107,7 +107,7 @@ public class SolicitudFacturaConfiguration : IEntityTypeConfiguration<SolicitudF
             .IsRequired();
 
         builder.Property(s => s.FechaSolicitud)
-            .HasDefaultValueSql("GETDATE()");
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.Property(s => s.Notas)
             .HasMaxLength(500);

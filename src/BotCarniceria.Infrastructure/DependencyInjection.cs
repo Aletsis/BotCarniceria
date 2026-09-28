@@ -11,7 +11,6 @@ using BotCarniceria.Infrastructure.Persistence;
 using BotCarniceria.Infrastructure.Persistence.Repositories;
 using BotCarniceria.Infrastructure.Resilience;
 using Hangfire;
-using Hangfire.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,8 +24,11 @@ public static class DependencyInjection
         // Register CodePagesEncodingProvider to enable support for legacy code pages (e.g., CP850 used in thermal printers)
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
+        // Habilitar compatibilidad con timestamps legados en Npgsql para permitir fechas sin Kind=Utc explícito
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
         services.AddDbContext<BotCarniceriaDbContext>(options =>
-            options.UseSqlServer(
+            options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 b => b.MigrationsAssembly(typeof(BotCarniceriaDbContext).Assembly.FullName)));
 

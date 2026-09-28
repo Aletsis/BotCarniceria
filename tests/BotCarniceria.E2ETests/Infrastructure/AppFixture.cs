@@ -40,14 +40,14 @@ public class AppFixture : IDisposable
         
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         var defaultConn = Environment.GetEnvironmentVariable("E2E_CONNECTION_STRING")
-            ?? "Server=(localdb)\\mssqllocaldb;Database=BotCarniceriaE2E;Trusted_Connection=True;MultipleActiveResultSets=true";
+            ?? "Host=localhost;Port=5432;Database=BotCarniceriaE2E;Username=postgres;Password=postgrespassword;Include Error Detail=true";
         startInfo.Environment["ConnectionStrings__DefaultConnection"] = defaultConn;
 
         // Cleanup DB before starting
         try 
         {
             var optionsBuilder = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<BotCarniceria.Infrastructure.Persistence.Context.BotCarniceriaDbContext>();
-            optionsBuilder.UseSqlServer(startInfo.Environment["ConnectionStrings__DefaultConnection"]);
+            optionsBuilder.UseNpgsql(startInfo.Environment["ConnectionStrings__DefaultConnection"]);
             using var context = new BotCarniceria.Infrastructure.Persistence.Context.BotCarniceriaDbContext(optionsBuilder.Options, null!);
             context.Database.EnsureDeleted();
             Console.WriteLine("Dropped E2E Database.");
