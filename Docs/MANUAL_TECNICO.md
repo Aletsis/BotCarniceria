@@ -21,10 +21,10 @@ Guía técnica integral para desarrolladores, arquitectos de software, administr
 
 ## 1. Stack Tecnológico y Prerrequisitos
 
-* **Framework**: .NET 8.0 SDK (C# 12)
+* **Framework**: .NET 10.0 SDK (C# 14)
 * **Backend Web**: ASP.NET Core Web API (Webhook & Endpoints REST)
-* **Frontend Web**: Blazor Server (.NET 8) con MudBlazor 7.0 (Material Design)
-* **ORM & Persistencia**: Entity Framework Core 8.0 con SQL Server
+* **Frontend Web**: Blazor Server (.NET 10) con MudBlazor 8.0 (Material Design)
+* **ORM & Persistencia**: Entity Framework Core 10.0 con PostgreSQL / SQL Server
 * **Caché**: Abstracción `ICacheService` (MemoryCache / Redis)
 * **Procesamiento Asíncrono en Background**: Hangfire 1.8 (gestión de reintentos y colas)
 * **Resiliencia HTTP**: Polly Circuit Breaker

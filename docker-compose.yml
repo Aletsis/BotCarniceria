@@ -3,16 +3,15 @@ services:
     image: postgres:16-alpine
     container_name: botcarniceria_postgres
     restart: unless-stopped
+    network_mode: host
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
       POSTGRES_DB: ${POSTGRES_DB:-BotCarniceriaDb}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-BotCarniceriaDb}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-BotCarniceriaDb}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,11 +20,11 @@ services:
     image: dpage/pgadmin4:latest
     container_name: botcarniceria_pgadmin
     restart: unless-stopped
+    network_mode: host
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@botcarniceria.local}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@botcarniceria.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin1234}
-    ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      PGADMIN_LISTEN_PORT: ${PGADMIN_PORT:-5050}
     depends_on:
       postgres:
         condition: service_healthy

@@ -33,11 +33,11 @@ Sistema profesional de Bot de WhatsApp para gestión de pedidos de carnicería, 
 
 ## 🛠️ Tecnologías
 
-- **Core**: .NET 8.0 (C# 12)
+- **Core**: .NET 10.0 (C# 14)
 - **Web**: ASP.NET Core Web API + Blazor Server
-- **UI**: MudBlazor 7.0
+- **UI**: MudBlazor 8.0
 - **Datos**: 
-  - Entity Framework Core 8
+  - Entity Framework Core 10
   - SQL Server
   - MemoryCache / Redis (Abstracción)
 - **Integración**: WhatsApp Business API (Meta)
@@ -68,7 +68,7 @@ El proyecto cuenta con un conjunto completo de documentación en la carpeta `Doc
 ## 🚀 Guía de Inicio Rápido
 
 ### Prerrequisitos
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - SQL Server (LocalDB o instancia completa)
 - Cuenta desarrollador de Meta (para WhatsApp API)
 
@@ -112,7 +112,7 @@ El proyecto sigue una metodología estricta de **Clean Architecture**.
 El repositorio cuenta con pipelines automatizados con **GitHub Actions**:
 
 - **CI (`.github/workflows/ci.yml`)**:
-  - Compilación automática en Release con .NET 8 y 9.
+  - Compilación automática en Release con .NET 10.
   - Ejecución de suites de pruebas (unitarias, arquitectura, integración, componentes).
   - Recolección y generación de reporte de cobertura con Coverlet y ReportGenerator (publicado directamente en el Step Summary de GitHub Actions).
   - Se ejecuta en cada `push` o `pull_request` a la rama `main`.
